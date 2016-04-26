@@ -1,3 +1,4 @@
+REBAR = rebar3
 DEPS = $(CURDIR)/deps
 
 DIALYZER_OPTS = -Wunderspecs
@@ -33,26 +34,26 @@ all: compile eunit dialyzer
 
 # Clean ebin and .eunit of this project
 clean:
-	@rebar clean skip_deps=true
+	$(REBAR) clean skip_deps=true
 
 # Clean this project and all deps
 allclean:
-	@rebar clean
+	$(REBAR) clean
 
 compile: $(DEPS)
-	@rebar compile
+	$(REBAR) compile
 
 $(DEPS):
-	@rebar get-deps
+	$(REBAR) get-deps
 
 # Full clean and removal of all deps. Remove deps first to avoid
 # wasted effort of cleaning deps before nuking them.
 distclean:
 	@rm -rf deps $(DEPS_PLT)
-	@rebar clean
+	$(REBAR) clean
 
 eunit:
-	@rebar skip_deps=true eunit
+	$(REBAR) eunit
 
 test: eunit
 
@@ -74,6 +75,6 @@ endif
 	@echo "now try your build again"
 
 doc:
-	@rebar doc skip_deps=true
+	$(REBAR) doc skip_deps=true
 
 .PHONY: all compile eunit test dialyzer clean allclean distclean doc
