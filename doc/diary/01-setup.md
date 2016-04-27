@@ -60,7 +60,36 @@ as well as code coverage to help to improve quality.
 Run tests
 
     $ rebar3 eunit
+    ===> Verifying dependencies...
+    ===> Compiling mqtterl
+    ===> Performing EUnit tests...
+    ======================== EUnit ========================
+    file "mqtterl.app"
+      application 'mqtterl'
+        module 'mqtterl_app'
+        module 'mqtterl_sup'
+        [done in 0.012 s]
+      [done in 0.022 s]
+    dummy_tests: should_illustrate_a_basic_assert__test (module 'dummy_tests')...ok
+    =======================================================
+      Test passed.
     
 Have a look at the coverage
 
     $ rebar3 cover
+    ===> Performing cover analysis...
+      |------------------------|------------|
+      |                module  |  coverage  |
+      |------------------------|------------|
+      |           mqtterl_app  |        0%  |
+      |           mqtterl_sup  |        0%  |
+      |           dummy_tests  |      100%  |
+      |------------------------|------------|
+      |                 total  |       33%  |
+      |------------------------|------------|
+      coverage calculated from:
+        /Users/Arnauld/Projects/mqtterl/_build/test/cover/eunit.coverdata
+      cover summary written to: /Users/Arnauld/Projects/mqtterl/_build/test/cover/index.html
+      
+      
+## a basic TCP server
