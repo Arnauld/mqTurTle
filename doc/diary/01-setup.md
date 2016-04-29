@@ -96,3 +96,63 @@ Have a look at the coverage
 
 commit `bbd31ed1d88401af5d203dd569dc6218c4b16a3a`
 
+## parse/encode utf8
+
+**MQTT 1.5.3 UTF-8 encoded strings**
+
+commit `297b83ed71259bb46d3db47af29494db3e7a513e`
+
+## record frame
+
+Idea is to start a tcp server that will be used to dump calls from `client_test` 
+from https://github.com/eclipse/paho.mqtt.testing
+
+see https://wiki.eclipse.org/Interop_Testing_Plan#Test_Broker
+
+
+`Terminal 1`:
+
+    $ erl
+    Erlang/OTP 18 [erts-7.2.1] [source] [64-bit] [smp:4:4] [async-threads:10] [hipe] [kernel-poll:false]
+    
+    Eshell V7.2.1  (abort with ^G)
+    1> c('src/mqtterl_tcp_dump.erl').
+    src/mqtterl_tcp_dump.erl:24: Warning: variable 'Ref' is unused
+    {ok,mqtterl_tcp_dump}
+    2> c('src/mqtterl_tcp_server.erl').
+    {ok,mqtterl_tcp_server}
+    3> mqtterl_tcp_dump:start(10305).
+    Ready to accept connection on port 10305
+    {ok,{state,#Port<0.2398>,
+               {#Fun<mqtterl_tcp_dump.0.104469679>,
+                #Fun<mqtterl_tcp_dump.1.104469679>}}}
+    4>
+
+
+`Terminal 2`:
+
+
+    $ git clone https://github.com/eclipse/paho.mqtt.testing.git
+    $ cd paho.mqtt.testing/interoperability
+    $ python3 client_test.py -p 10305
+    
+And now things got weird, everyone is crashing :) but at least one grabbed the first frame, in `Terminal 1`
+
+    Connection accepted #Port<0.2399>
+    handlerFn:Init
+    Got packet: <<16,22,0,4,77,81,84,84,4,2,0,0,0,10,109,121,99,108,105,101,110,
+                  116,105,100>>
+    4>
+    =ERROR REPORT==== 29-Apr-2016::09:19:30 ===
+    Error in process <0.47.0> with exit value:
+    {{badmatch,<<16,22,0,4,77,81,84,84,4,2,0,0,0,10,109,121,99,108,105,101,110,
+                 116,105,100>>},
+     [{mqtterl_tcp_dump,'-start/1-fun-1-',3,
+                        [{file,"src/mqtterl_tcp_dump.erl"},{line,30}]},
+      {mqtterl_tcp_server,listen_loop,3,
+                          [{file,"src/mqtterl_tcp_server.erl"},{line,76}]}]}
+    ** exception error: no match of right hand side value <<16,22,0,4,77,81,84,84,4,2,0,0,0,10,109,121,99,108,105,
+                                                            101,110,116,105,100>>
+         in function  mqtterl_tcp_dump:'-start/1-fun-1-'/3 (src/mqtterl_tcp_dump.erl, line 30)
+         in call from mqtterl_tcp_server:listen_loop/3 (src/mqtterl_tcp_server.erl, line 76)
+
