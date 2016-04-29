@@ -25,6 +25,12 @@ should_encode_utf8_binary__test() ->
   ?assertEqual(Raw2, mqtterl_parser:encode_utf8(<<"hello">>)).
 
 
+should_parse_remaining_length__test() ->
+  {RL1, _} = mqtterl_parser:parse_remaining_length(<<0:1, 123:7, 0:1, 2:7>>),
+  ?assertEqual(123, RL1),
+  {RL2, _} = mqtterl_parser:parse_remaining_length(<<1:1, 65:7, 0:1, 2:7>>),
+  ?assertEqual(321, RL2).
+
 should_parse_connect_packet__test() ->
   %% `Connects(DUP=False, QoS=0, Retain=False,
   %%           ProtocolName=MQTT, ProtocolVersion=4,
@@ -32,5 +38,7 @@ should_parse_connect_packet__test() ->
   %%           ClientId=myclientid, usernameFlag=False, passwordFlag=False)`
   Packet = <<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110, 116, 105, 100>>,
 
-  {Type, Flags, Remaining} = mqtterl_parser:parse_type(Packet),
-  ?assertEqual(?CONNECT, Type).
+  {Type, _Flags, Remaining1} = mqtterl_parser:parse_type(Packet),
+  ?assertEqual(?CONNECT, Type),
+  {RemainingLength, Remaining2} = mqtterl_parser:parse_remaining_length(Remaining1),
+  ?assertEqual(RemainingLength, 22).

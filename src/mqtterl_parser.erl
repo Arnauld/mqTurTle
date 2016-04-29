@@ -17,7 +17,7 @@
 
 %% Message
 
--export([parse_type/1]).
+-export([parse_type/1, parse_remaining_length/1]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -33,3 +33,22 @@ encode_utf8(Str) ->
 parse_type(Bin) ->
   <<PacketType:4, Flags:4, Rest/binary>> = Bin,
   {PacketType, Flags, Rest}.
+
+parse_remaining_length(Bin) ->
+  parse_remaining_length(Bin, 0, 0).
+
+parse_remaining_length(<<Flag:1, Value:7, Remaining/binary>>, Acc, Level) ->
+  NewValue = Acc + Value * remaining_length_multiplier(Level),
+  case Flag of
+    0 -> {NewValue, Remaining};
+    1 -> parse_remaining_length(Remaining, NewValue, Level + 1)
+  end.
+
+remaining_length_multiplier(Level) ->
+  case Level of
+    0 -> 1;
+    1 -> 128;
+    2 -> 128 * 128;
+    3 -> 128 * 128 * 128;
+    _ -> error(remining_length_overflow)
+  end.
