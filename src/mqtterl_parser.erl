@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(mqtterl_parser).
 -author("Arnauld").
+-include("mqtterl_message.hrl").
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -18,6 +19,8 @@
 %% Message
 
 -export([parse_type/1, parse_remaining_length/1]).
+
+-export([parse_connect_variable_header/1]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -52,3 +55,24 @@ remaining_length_multiplier(Level) ->
     3 -> 128 * 128 * 128;
     _ -> error(remining_length_overflow)
   end.
+
+parse_connect_variable_header(Bin) ->
+  {ProtocolName, Bin1} = parse_utf8(Bin),
+  <<ProtocolLevel:8,
+  Username:1, Password:1, WillRetain:1, WillQoS:2, WillFlag:1, CleanSession:1, _Reserved:1,
+  KeepAlive:16/big-unsigned-integer,
+  Bin2/binary>> = Bin1,
+
+  {#mqtt_connect{
+    protocol_name = ProtocolName,
+    protocol_level = ProtocolLevel,
+    username = boolean(Username),
+    password = boolean(Password),
+    will_retain = boolean(WillRetain),
+    will_qos = WillQoS,
+    will_flag = boolean(WillFlag),
+    clean_session = boolean(CleanSession),
+    keep_alive = KeepAlive}, Bin2}.
+
+boolean(1) -> true;
+boolean(_) -> false.

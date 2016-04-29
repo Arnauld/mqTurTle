@@ -25,3 +25,14 @@
 -define(RESERVED2, 15).   %% Reserved
 
 -type mqtt_packet_type() :: ?RESERVED..?DISCONNECT.
+
+-record(mqtt_connect, {
+  protocol_name :: string(),
+  protocol_level :: pos_integer(),
+  username :: boolean(),
+  password :: boolean(),
+  will_retain :: boolean(),
+  will_qos :: integer(),
+  will_flag :: boolean(),
+  clean_session :: boolean(),
+  keep_alive :: pos_integer()}).

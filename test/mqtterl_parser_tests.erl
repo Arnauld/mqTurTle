@@ -40,5 +40,18 @@ should_parse_connect_packet__test() ->
 
   {Type, _Flags, Remaining1} = mqtterl_parser:parse_type(Packet),
   ?assertEqual(?CONNECT, Type),
+
   {RemainingLength, Remaining2} = mqtterl_parser:parse_remaining_length(Remaining1),
-  ?assertEqual(RemainingLength, 22).
+  ?assertEqual(RemainingLength, 22),
+
+  {Header, Remaining3} = mqtterl_parser:parse_connect_variable_header(Remaining2),
+  ?assertEqual(<<"MQTT">>, Header#mqtt_connect.protocol_name),
+  ?assertEqual(4, Header#mqtt_connect.protocol_level),
+  ?assertEqual(false, Header#mqtt_connect.username),
+  ?assertEqual(false, Header#mqtt_connect.password),
+  ?assertEqual(0, Header#mqtt_connect.will_qos),
+  ?assertEqual(false, Header#mqtt_connect.will_retain),
+  ?assertEqual(false, Header#mqtt_connect.will_flag),
+  ?assertEqual(true, Header#mqtt_connect.clean_session),
+  ?assertEqual(0, Header#mqtt_connect.keep_alive),
+  ok.
