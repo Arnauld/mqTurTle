@@ -109,8 +109,10 @@ from https://github.com/eclipse/paho.mqtt.testing
 
 see https://wiki.eclipse.org/Interop_Testing_Plan#Test_Broker
 
+commit `9941e68a5c837ff902ae8f0b582a28be4bed152d`
 
-`Terminal 1`:
+
+`Terminal 1`: starts the "broker" on port 10305
 
     $ erl
     Erlang/OTP 18 [erts-7.2.1] [source] [64-bit] [smp:4:4] [async-threads:10] [hipe] [kernel-poll:false]
@@ -128,15 +130,26 @@ see https://wiki.eclipse.org/Interop_Testing_Plan#Test_Broker
                 #Fun<mqtterl_tcp_dump.1.104469679>}}}
     4>
 
-
-`Terminal 2`:
-
+Clone `paho.mqtt.testing` project
 
     $ git clone https://github.com/eclipse/paho.mqtt.testing.git
+   
+
+`Terminal 2`: starts MQTT proxy
+
+    $ cd paho.mqtt.testing/interoperability
+    $ python3 run_proxy.py localhost 10305
+
+`Terminal 3`: starts MQTT client test
+
+
     $ cd paho.mqtt.testing/interoperability
     $ python3 client_test.py -p 10305
     
-And now things got weird, everyone is crashing :) but at least one grabbed the first frame, in `Terminal 1`
+And of course client is crashing since our broker is not responding anything...
+Let's see the output of our broker to grab the frame and the mqtt proxy to grab the mqtt data sent.
+
+`Terminal 1`
 
     Connection accepted #Port<0.2399>
     handlerFn:Init
@@ -155,4 +168,61 @@ And now things got weird, everyone is crashing :) but at least one grabbed the f
                                                             101,110,116,105,100>>
          in function  mqtterl_tcp_dump:'-start/1-fun-1-'/3 (src/mqtterl_tcp_dump.erl, line 30)
          in call from mqtterl_tcp_server:listen_loop/3 (src/mqtterl_tcp_server.erl, line 76)
+
+So frame received `<<16,22,0,4,77,81,84,84,4,2,0,0,0,10,109,121,99,108,105,101,110,116,105,100>>` 
+which means according to `Terminal 2`:
+
+    None, None, None) True
+    Traceback (most recent call last):
+      File "/Users/Arnauld/Projects/3rdParties/mqtt/paho.mqtt.testing/interoperability/mqtt/proxy/mqttsas.py", line 46, in handle
+        brokers.connect((brokerhost, brokerport))
+    ConnectionRefusedError: [Errno 61] Connection refused
+    20160429 092405.816887 C to S myclientid Connects(DUP=False, QoS=0, Retain=False, ProtocolName=MQTT, ProtocolVersion=4, CleanSession=True, WillFlag=False, KeepAliveTimer=0, ClientId=myclientid, usernameFlag=False, passwordFlag=False)
+    ['0x10', '0x16', '0x0', '0x4', '0x4d', '0x51', '0x54', '0x54', '0x4', '0x2', '0x0', '0x0', '0x0', '0xa', '0x6d', '0x79', '0x63', '0x6c', '0x69', '0x65', '0x6e', '0x74', '0x69', '0x64']
+    b'\x10\x16\x00\x04MQTT\x04\x02\x00\x00\x00\nmyclientid'
+    20160429 092405.81721 client myclientid connection closing
+    
+The interesting part is:
+`Connects(DUP=False, QoS=0, Retain=False, ProtocolName=MQTT, ProtocolVersion=4, CleanSession=True, WillFlag=False, KeepAliveTimer=0, ClientId=myclientid, usernameFlag=False, passwordFlag=False)`
+
+Note for later: framing looks differents betwwen `Terminal 2` and `Terminal 1`, let's ignore that for the moment, this may come from: endianess, signedness or packing (8bit vs 16bit)...
+  
+We actually reached to grab a real frame with a known contents, so let's back to our packet parser.
+And try to parse the **Fixed Header** (**MQTT 2.2 Fixed Header**)
+
+`test/mqtterl_parser_tests.erl`
+
+```erlang
+should_parse_connect_packet__test() ->
+  %% `Connects(DUP=False, QoS=0, Retain=False, 
+  %%           ProtocolName=MQTT, ProtocolVersion=4, 
+  %%           CleanSession=True, WillFlag=False, KeepAliveTimer=0, 
+  %%           ClientId=myclientid, usernameFlag=False, passwordFlag=False)`
+  Packet = <<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110, 116, 105, 100>>,
+  {Header, Remaining} = mqtterl_parser:parse_header(Packet),
+  ?assertEqual(?CONNECT, Header#mqtt_fixed_header.type).
+```
+
+So will add header definitions into an include file, so that it will be easier to share among the project.
+Those are similar to h file in c.
+
+
+Issue: one cannot read a byte partially and let the remaining in a binary thus:
+
+```erlang
+parse_type(Bin) ->
+  <<PacketType:4, Rest/binary>> = Bin,
+  {PacketType, Rest}.
+```
+
+results in:
+
+```
+in call from mqtterl_parser_tests:should_parse_connect_packet__test/0 (/Users/Arnauld/Projects/mqtterl/_build/test/lib/mqtterl/test/mqtterl_parser_tests.erl, line 35)
+**error:{badmatch,<<16,22,0,4,77,81,84,84,4,2,0,0,0,10,109,121,99,...>>}
+  output:<<"">>
+```
+
+So let's grab the entire byte and load the flags too.
+
 

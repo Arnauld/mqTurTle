@@ -15,6 +15,10 @@
 
 -export([parse_utf8/1, encode_utf8/1]).
 
+%% Message
+
+-export([parse_type/1]).
+
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
@@ -25,3 +29,7 @@ parse_utf8(Bin) ->
 encode_utf8(Str) ->
   Len = size(Str),
   <<Len:16/big, Str/binary>>.
+
+parse_type(Bin) ->
+  <<PacketType:4, Flags:4, Rest/binary>> = Bin,
+  {PacketType, Flags, Rest}.
