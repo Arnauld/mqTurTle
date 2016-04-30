@@ -71,6 +71,7 @@ boolean_to_bit(_) -> 0.
 %% ------------------------------------------------------------------
 %% CONNECT
 %% ------------------------------------------------------------------
+-spec(decode_connect_variable_header(binary()) -> {#mqtt_connect{}, binary()}).
 decode_connect_variable_header(Bin) ->
   {ProtocolName, Remaining1} = decode_utf8(Bin),
   <<ProtocolLevel:8,
@@ -78,7 +79,7 @@ decode_connect_variable_header(Bin) ->
   KeepAlive:16,
   Remaining2/binary>> = Remaining1,
 
-  {#mqtt_connect{
+  Connect = #mqtt_connect{
     protocol_name = ProtocolName,
     protocol_level = ProtocolLevel,
     has_username = bit_to_boolean(Username),
@@ -87,7 +88,8 @@ decode_connect_variable_header(Bin) ->
     will_qos = WillQoS,
     will_flag = bit_to_boolean(WillFlag),
     clean_session = bit_to_boolean(CleanSession),
-    keep_alive = KeepAlive}, Remaining2}.
+    keep_alive = KeepAlive},
+  {Connect, Remaining2}.
 
 decode_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username = HasUsername, has_password = HasPassword}, Bin) ->
   {ClientId, Remaining1} = decode_utf8(Bin),

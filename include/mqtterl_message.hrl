@@ -28,7 +28,7 @@
 
 -record(mqtt_connect, {
   % HEADER
-  protocol_name :: string(),
+  protocol_name :: binary(),
   protocol_level :: pos_integer(),
   has_username :: boolean(),
   has_password :: boolean(),
@@ -38,11 +38,11 @@
   clean_session :: boolean(),
   keep_alive :: pos_integer(),
   % PAYLOAD
-  client_id = undefined :: string() | undefined,
-  username = undefined :: string() | undefined,
-  password = undefined :: string() | undefined,
-  will_topic = undefined :: string() | undefined,
-  will_message = undefined :: string() | undefined}).
+  client_id = undefined :: binary() | undefined,
+  username = undefined :: binary() | undefined,
+  password = undefined :: binary() | undefined,
+  will_topic = undefined :: binary() | undefined,
+  will_message = undefined :: binary() | undefined}).
 
 -define(CONNACK_ACCEPT, 0).    %% Connection accepted
 -define(CONNACK_PROTO_VER, 1).    %% Connection Refused, unacceptable protocol version: The Server does not support the level of the MQTT protocol requested by the Client

@@ -295,3 +295,75 @@ What's happen ? We managed to make first round trips connect <-> connack, but be
 
 
 
+# Cleanup
+
+From commit `5cd4ed99276fc73d0018ff4d5c46e03be1b0e36b`
+
+    $ rebar3 dialyzer
+    ===> Verifying dependencies...
+    ===> Compiling mqtterl
+    ===> Dialyzer starting, this may take a while...
+    ===> Updating plt...
+    ===> Resolving files...
+    ===> Checking 156 files in "/Users/Arnauld/Projects/mqtterl/_build/default/rebar3_18.2.1_plt"...
+    ===> Doing success typing analysis...
+    ===> Resolving files...
+    ===> Analyzing 6 files with "/Users/Arnauld/Projects/mqtterl/_build/default/rebar3_18.2.1_plt"...
+    
+    _build/default/lib/mqtterl/src/mqtterl_codec.erl
+      75: Function decode_connect_variable_header/1 has no local return
+      82: Record construction #mqtt_connect{protocol_name::binary(),protocol_level::byte(),has_username::boolean(),has_password::boolean(),will_retain::boolean(),will_qos::0 | 1 | 2 | 3,will_flag::boolean(),clean_session::boolean(),keep_alive::char()} violates the declared type of field protocol_name::'undefined' | string()
+      94: Function decode_connect_payload/2 has no local return
+     117: Record construction #mqtt_connect{protocol_name::'undefined' | string(),protocol_level::'undefined' | pos_integer(),has_username::'false' | 'true' | 'undefined',has_password::'false' | 'true' | 'undefined',will_retain::'false' | 'true' | 'undefined',will_qos::'undefined' | integer(),will_flag::'false' | 'true' | 'undefined',clean_session::'false' | 'true' | 'undefined',keep_alive::'undefined' | pos_integer(),client_id::binary(),username::'undefined' | binary(),password::'undefined' | binary(),will_topic::'undefined' | binary(),will_message::'undefined' | binary()} violates the declared type of field client_id::'undefined' | string()
+    
+    _build/default/lib/mqtterl/src/mqtterl_protocol.erl
+      32: Function tcp_on_packet/3 has no local return
+      36: Function handle_packet/5 has no local return
+    ===> Warnings written to /Users/Arnauld/Projects/mqtterl/_build/default/18.2.1.dialyzer_warnings
+    ===> Warnings occured running dialyzer: 6
+
+First fix all declarations in record from `string()`  to `binary()` in `mqtterl_message.hrl`
+
+```erlang
+-record(mqtt_connect, {
+  % HEADER
+  protocol_name :: binary(),
+  protocol_level :: pos_integer(),
+  has_username :: boolean(),
+  has_password :: boolean(),
+  will_retain :: boolean(),
+  will_qos :: integer(),
+  will_flag :: boolean(),
+  clean_session :: boolean(),
+  keep_alive :: pos_integer(),
+  % PAYLOAD
+  client_id = undefined :: binary() | undefined,
+  username = undefined :: binary() | undefined,
+  password = undefined :: binary() | undefined,
+  will_topic = undefined :: binary() | undefined,
+  will_message = undefined :: binary() | undefined}).
+```
+
+Start to specify the function type intention:
+
+```erlang
+-spec(decode_connect_variable_header(binary()) -> {#mqtt_connect{}, binary()}).
+decode_connect_variable_header(Bin) ->
+    ...
+```
+
+Then `rebar3 dialyzer` leads to:
+
+    $ rebar3 dialyzer
+    ===> Verifying dependencies...
+    ===> Compiling mqtterl
+    ===> Dialyzer starting, this may take a while...
+    ===> Updating plt...
+    ===> Resolving files...
+    ===> Checking 156 files in "/Users/Arnauld/Projects/mqtterl/_build/default/rebar3_18.2.1_plt"...
+    ===> Doing success typing analysis...
+    ===> Resolving files...
+    ===> Analyzing 6 files with "/Users/Arnauld/Projects/mqtterl/_build/default/rebar3_18.2.1_plt"...
+
+
+Hu hu!
