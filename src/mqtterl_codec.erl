@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 28. avr. 2016 23:02
 %%%-------------------------------------------------------------------
--module(mqtterl_parser).
+-module(mqtterl_codec).
 -author("Arnauld").
 -include("mqtterl_message.hrl").
 
