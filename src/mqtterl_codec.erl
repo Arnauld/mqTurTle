@@ -14,18 +14,18 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([parse_utf8/1, encode_utf8/1]).
+-export([decode_utf8/1, encode_utf8/1]).
 
 %% Message
 
--export([parse_packet_type/1, parse_remaining_length/1]).
+-export([decode_packet_type/1, decode_remaining_length/1]).
 
--export([parse_connect_variable_header/1, parse_connect_payload/2]).
+-export([decode_connect_variable_header/1, decode_connect_payload/2]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
-parse_utf8(Bin) ->
+decode_utf8(Bin) ->
   <<Len:16/big, Str:Len/binary, Rest/binary>> = Bin,
   {Str, Rest}.
 
@@ -33,18 +33,18 @@ encode_utf8(Str) ->
   Len = size(Str),
   <<Len:16/big, Str/binary>>.
 
-parse_packet_type(Bin) ->
+decode_packet_type(Bin) ->
   <<PacketType:4, Flags:4, Rest/binary>> = Bin,
   {PacketType, Flags, Rest}.
 
-parse_remaining_length(Bin) ->
-  parse_remaining_length(Bin, 0, 0).
+decode_remaining_length(Bin) ->
+  decode_remaining_length(Bin, 0, 0).
 
-parse_remaining_length(<<Flag:1, Value:7, Remaining/binary>>, Acc, Level) ->
+decode_remaining_length(<<Flag:1, Value:7, Remaining/binary>>, Acc, Level) ->
   NewValue = Acc + Value * remaining_length_multiplier(Level),
   case Flag of
     0 -> {NewValue, Remaining};
-    1 -> parse_remaining_length(Remaining, NewValue, Level + 1)
+    1 -> decode_remaining_length(Remaining, NewValue, Level + 1)
   end.
 
 remaining_length_multiplier(Level) ->
@@ -62,8 +62,8 @@ boolean(_) -> false.
 %% ------------------------------------------------------------------
 %% CONNECT
 %% ------------------------------------------------------------------
-parse_connect_variable_header(Bin) ->
-  {ProtocolName, Remaining1} = parse_utf8(Bin),
+decode_connect_variable_header(Bin) ->
+  {ProtocolName, Remaining1} = decode_utf8(Bin),
   <<ProtocolLevel:8,
   Username:1, Password:1, WillRetain:1, WillQoS:2, WillFlag:1, CleanSession:1, _Reserved:1,
   KeepAlive:16/big-unsigned-integer,
@@ -80,22 +80,22 @@ parse_connect_variable_header(Bin) ->
     clean_session = boolean(CleanSession),
     keep_alive = KeepAlive}, Remaining2}.
 
-parse_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username = HasUsername, has_password = HasPassword}, Bin) ->
-  {ClientId, Remaining1} = parse_utf8(Bin),
+decode_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username = HasUsername, has_password = HasPassword}, Bin) ->
+  {ClientId, Remaining1} = decode_utf8(Bin),
   {WillTopic, Remaining2} = case WillFlag of
-                              true -> parse_utf8(Remaining1);
+                              true -> decode_utf8(Remaining1);
                               false -> {undefined, Remaining1}
                             end,
   {WillMessage, Remaining3} = case WillFlag of
-                                true -> parse_utf8(Remaining2);
+                                true -> decode_utf8(Remaining2);
                                 false -> {undefined, Remaining2}
                               end,
   {Username, Remaining4} = case HasUsername of
-                             true -> parse_utf8(Remaining3);
+                             true -> decode_utf8(Remaining3);
                              false -> {undefined, Remaining3}
                            end,
   {Password, Remaining5} = case HasPassword of
-                             true -> parse_utf8(Remaining4);
+                             true -> decode_utf8(Remaining4);
                              false -> {undefined, Remaining4}
                            end,
   {Header#mqtt_connect{
