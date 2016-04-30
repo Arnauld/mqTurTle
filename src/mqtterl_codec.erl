@@ -64,7 +64,7 @@ parse_connect_variable_header(Bin) ->
   <<ProtocolLevel:8,
   Username:1, Password:1, WillRetain:1, WillQoS:2, WillFlag:1, CleanSession:1, _Reserved:1,
   KeepAlive:16/big-unsigned-integer,
-  Bin2/binary>> = Remaining1,
+  Remaining2/binary>> = Remaining1,
 
   {#mqtt_connect{
     protocol_name = ProtocolName,
@@ -75,7 +75,7 @@ parse_connect_variable_header(Bin) ->
     will_qos = WillQoS,
     will_flag = boolean(WillFlag),
     clean_session = boolean(CleanSession),
-    keep_alive = KeepAlive}, Bin2}.
+    keep_alive = KeepAlive}, Remaining2}.
 
 parse_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username = HasUsername, has_password = HasPassword}, Bin) ->
   {ClientId, Remaining1} = parse_utf8(Bin),
