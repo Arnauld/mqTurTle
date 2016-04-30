@@ -27,12 +27,19 @@
 -type mqtt_packet_type() :: ?RESERVED..?DISCONNECT.
 
 -record(mqtt_connect, {
+  % HEADER
   protocol_name :: string(),
   protocol_level :: pos_integer(),
-  username :: boolean(),
-  password :: boolean(),
+  has_username :: boolean(),
+  has_password :: boolean(),
   will_retain :: boolean(),
   will_qos :: integer(),
   will_flag :: boolean(),
   clean_session :: boolean(),
-  keep_alive :: pos_integer()}).
+  keep_alive :: pos_integer(),
+  % PAYLOAD
+  client_id = undefined :: string() | undefined,
+  username = undefined :: string() | undefined,
+  password = undefined :: string() | undefined,
+  will_topic = undefined :: string() | undefined,
+  will_message = undefined :: string() | undefined}).

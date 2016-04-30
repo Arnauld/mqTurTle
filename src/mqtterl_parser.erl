@@ -20,7 +20,7 @@
 
 -export([parse_type/1, parse_remaining_length/1]).
 
--export([parse_connect_variable_header/1]).
+-export([parse_connect_variable_header/1, parse_connect_payload/2]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -56,6 +56,9 @@ remaining_length_multiplier(Level) ->
     _ -> error(remining_length_overflow)
   end.
 
+boolean(1) -> true;
+boolean(_) -> false.
+
 parse_connect_variable_header(Bin) ->
   {ProtocolName, Bin1} = parse_utf8(Bin),
   <<ProtocolLevel:8,
@@ -66,13 +69,38 @@ parse_connect_variable_header(Bin) ->
   {#mqtt_connect{
     protocol_name = ProtocolName,
     protocol_level = ProtocolLevel,
-    username = boolean(Username),
-    password = boolean(Password),
+    has_username = boolean(Username),
+    has_password = boolean(Password),
     will_retain = boolean(WillRetain),
     will_qos = WillQoS,
     will_flag = boolean(WillFlag),
     clean_session = boolean(CleanSession),
     keep_alive = KeepAlive}, Bin2}.
 
-boolean(1) -> true;
-boolean(_) -> false.
+parse_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username = HasUsername, has_password = HasPassword}, Bin) ->
+  {ClientId, Remaining1} = parse_utf8(Bin),
+  {WillTopic, Remaining2} = case WillFlag of
+                              true -> parse_utf8(Remaining1);
+                              false -> {undefined, Remaining1}
+                            end,
+  {WillMessage, Remaining3} = case WillFlag of
+                                true -> parse_utf8(Remaining2);
+                                false -> {undefined, Remaining2}
+                              end,
+  {Username, Remaining4} = case HasUsername of
+                             true -> parse_utf8(Remaining3);
+                             false -> {undefined, Remaining3}
+                           end,
+  {Password, Remaining5} = case HasPassword of
+                             true -> parse_utf8(Remaining4);
+                             false -> {undefined, Remaining4}
+                           end,
+  {Header#mqtt_connect{
+    client_id = ClientId,
+    will_topic = WillTopic,
+    will_message = WillMessage,
+    username = Username,
+    password = Password}, Remaining5}.
+
+
+

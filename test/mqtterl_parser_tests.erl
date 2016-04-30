@@ -47,11 +47,21 @@ should_parse_connect_packet__test() ->
   {Header, Remaining3} = mqtterl_parser:parse_connect_variable_header(Remaining2),
   ?assertEqual(<<"MQTT">>, Header#mqtt_connect.protocol_name),
   ?assertEqual(4, Header#mqtt_connect.protocol_level),
-  ?assertEqual(false, Header#mqtt_connect.username),
-  ?assertEqual(false, Header#mqtt_connect.password),
+  ?assertEqual(false, Header#mqtt_connect.has_username),
+  ?assertEqual(false, Header#mqtt_connect.has_password),
   ?assertEqual(0, Header#mqtt_connect.will_qos),
   ?assertEqual(false, Header#mqtt_connect.will_retain),
   ?assertEqual(false, Header#mqtt_connect.will_flag),
   ?assertEqual(true, Header#mqtt_connect.clean_session),
   ?assertEqual(0, Header#mqtt_connect.keep_alive),
+
+  {Payload, Remaining4} = mqtterl_parser:parse_connect_payload(Header, Remaining3),
+  ?assertEqual(<<"myclientid">>, Payload#mqtt_connect.client_id),
+  ?assertEqual(undefined, Payload#mqtt_connect.username),
+  ?assertEqual(undefined, Payload#mqtt_connect.password),
+  ?assertEqual(undefined, Payload#mqtt_connect.will_topic),
+  ?assertEqual(undefined, Payload#mqtt_connect.will_message),
+
+  % Nothing should remain...
+  ?assertEqual(<<>>, Remaining4),
   ok.
