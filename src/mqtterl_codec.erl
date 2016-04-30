@@ -18,7 +18,7 @@
 
 %% Message
 
--export([parse_type/1, parse_remaining_length/1]).
+-export([parse_packet_type/1, parse_remaining_length/1]).
 
 -export([parse_connect_variable_header/1, parse_connect_payload/2]).
 
@@ -33,7 +33,7 @@ encode_utf8(Str) ->
   Len = size(Str),
   <<Len:16/big, Str/binary>>.
 
-parse_type(Bin) ->
+parse_packet_type(Bin) ->
   <<PacketType:4, Flags:4, Rest/binary>> = Bin,
   {PacketType, Flags, Rest}.
 
