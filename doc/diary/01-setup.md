@@ -230,5 +230,68 @@ So let's grab the entire byte and load the flags too.
 Parse connect Payload `5416e463ad9e74a170f3ef9f514f904735801450`
 
 
+Performed some cleaning and renaming: all `parse_` functions are renamed to `decode_` to be more consistent with the encode function.
+
+OK at this point, only the happy path has been handled: one assumed the packet size was big enough, and field value were well formed...
+This is ok for now but one keep in mind, hendling all those checks may have an impact on how we manage the packet. 
+For now, let's try to handle at least the message correctly: receive an `connect` message and answer a `connack` message. 
+Once done, we'll add the conformance checks.
+
+For that we need to plug our codec in the tcp server. We add an intermediate layer to glue both of them: the protocol layer.
+
+
+...
+
+Connack encode: ``
+
+One done it becomes cumbersome to launch the repl due the number of files required, thus one relies on rebar3
+
+    $ rebar3 shell
+    $ mqtterl_tcp_server:start_link(10305, mqtterl_protocol:tcp_handler()).
+    
+Let's trigger the previous test and see what's happen in the proxy Terminal:
+
+    Listening on port 10306, broker on port 10305
+    20160430 162640.661023 C to S myclientid Connects(DUP=False, QoS=0, Retain=False, ProtocolName=MQTT, ProtocolVersion=4, CleanSession=True, WillFlag=False, KeepAliveTimer=0, ClientId=myclientid, usernameFlag=False, passwordFlag=False)
+    ['0x10', '0x16', '0x0', '0x4', '0x4d', '0x51', '0x54', '0x54', '0x4', '0x2', '0x0', '0x0', '0x0', '0xa', '0x6d', '0x79', '0x63', '0x6c', '0x69', '0x65', '0x6e', '0x74', '0x69', '0x64']
+    b'\x10\x16\x00\x04MQTT\x04\x02\x00\x00\x00\nmyclientid'
+    20160430 162640.661173 client myclientid connection closing
+    20160430 162829.48627 C to S myclientid Connects(DUP=False, QoS=0, Retain=False, ProtocolName=MQTT, ProtocolVersion=4, CleanSession=True, WillFlag=False, KeepAliveTimer=0, ClientId=myclientid, usernameFlag=False, passwordFlag=False)
+    ['0x10', '0x16', '0x0', '0x4', '0x4d', '0x51', '0x54', '0x54', '0x4', '0x2', '0x0', '0x0', '0x0', '0xa', '0x6d', '0x79', '0x63', '0x6c', '0x69', '0x65', '0x6e', '0x74', '0x69', '0x64']
+    b'\x10\x16\x00\x04MQTT\x04\x02\x00\x00\x00\nmyclientid'
+    20160430 162829.48858 client myclientid connection closing
+    20160430 162910.337953 C to S myclientid Connects(DUP=False, QoS=0, Retain=False, ProtocolName=MQTT, ProtocolVersion=4, CleanSession=True, WillFlag=False, KeepAliveTimer=0, ClientId=myclientid, usernameFlag=False, passwordFlag=False)
+    ['0x10', '0x16', '0x0', '0x4', '0x4d', '0x51', '0x54', '0x54', '0x4', '0x2', '0x0', '0x0', '0x0', '0xa', '0x6d', '0x79', '0x63', '0x6c', '0x69', '0x65', '0x6e', '0x74', '0x69', '0x64']
+    b'\x10\x16\x00\x04MQTT\x04\x02\x00\x00\x00\nmyclientid'
+    20160430 162910.339399 S to C myclientid Connacks(DUP=False, QoS=0, Retain=False, Session present=False, ReturnCode=0)
+    20160430 162910.444849 C to S myclientid Disconnects(DUP=False, QoS=0, Retain=False)
+    ['0xe0', '0x0']
+    b'\xe0\x00'
+    20160430 162910.445787 client myclientid connection closing
+    (None, None, None) True
+    
+Weird, on the broker terminal:
+
+    Got packet: <<224,0>>
+    2>
+    =ERROR REPORT==== 30-Apr-2016::16:29:10 ===
+    Error in process <0.79.0> with exit value:
+    {function_clause,
+        [{mqtterl_protocol,handle_packet,
+             [14,#Port<0.38574>,{state},0,<<0>>],
+             [{file,
+                  "/Users/Arnauld/Projects/mqtterl/_build/default/lib/mqtterl/src/mqtterl_protocol.erl"},
+              {line,36}]},
+         {mqtterl_tcp_server,listen_loop,3,
+             [{file,
+                  "/Users/Arnauld/Projects/mqtterl/_build/default/lib/mqtterl/src/mqtterl_tcp_server.erl"},
+              {line,76}]}]}
+    ** exception error: no function clause matching mqtterl_protocol:handle_packet(14,#Port<0.38574>,{state},0,<<0>>) (/Users/Arnauld/Projects/mqtterl/_build/default/lib/mqtterl/src/mqtterl_protocol.erl, line 36)
+         in function  mqtterl_tcp_server:listen_loop/3 (/Users/Arnauld/Projects/mqtterl/_build/default/lib/mqtterl/src/mqtterl_tcp_server.erl, line 76)
+         
+What's happen ? We managed to make first round trips connect <-> connack, but be failed to handle code 14 packet type
+(`[14,#Port<0.38574>,{state},0,<<0>>]`) which correspond to the disconnect packet, this is normal :)
+
+
 
 

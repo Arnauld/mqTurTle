@@ -43,3 +43,17 @@
   password = undefined :: string() | undefined,
   will_topic = undefined :: string() | undefined,
   will_message = undefined :: string() | undefined}).
+
+-define(CONNACK_ACCEPT, 0).    %% Connection accepted
+-define(CONNACK_PROTO_VER, 1).    %% Connection Refused, unacceptable protocol version: The Server does not support the level of the MQTT protocol requested by the Client
+-define(CONNACK_INVALID_ID, 2).    %% Connection Refused, identifier rejected: Client Identifier is correct UTF-8 but not allowed by the Server
+-define(CONNACK_SERVER, 3).    %% Connection Refused, Server unavailable: The Network Connection has been made but the MQTT service is unavailable
+-define(CONNACK_CREDENTIALS, 4).    %% Connection Refused, bad user name or password: The data in the user name or password is malformed
+-define(CONNACK_AUTH, 5).    %% Connection Refused, not authorized: Client is not authorized to connect
+
+-type mqtt_connack() :: ?CONNACK_ACCEPT..?CONNACK_AUTH.
+
+-record(mqtt_connack, {
+  session_present = false :: boolean(),
+  return_code = ?CONNACK_SERVER :: mqtt_connack()
+}).

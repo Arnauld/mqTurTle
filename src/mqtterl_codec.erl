@@ -21,17 +21,24 @@
 -export([decode_packet_type/1, decode_remaining_length/1]).
 
 -export([decode_connect_variable_header/1, decode_connect_payload/2]).
+-export([encode_connack/1]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
+%%
+%% see http://erlang.org/doc/programming_examples/bit_syntax.html#Defaults
+%%
+%% The default unit depends on the the type. For integer, float, and bitstring it is 1. For binary it is 8.
+%% The default signedness is unsigned.
+%% The default endianness is big.
 %% ------------------------------------------------------------------
 decode_utf8(Bin) ->
-  <<Len:16/big, Str:Len/binary, Rest/binary>> = Bin,
+  <<Len:16, Str:Len/binary, Rest/binary>> = Bin,
   {Str, Rest}.
 
 encode_utf8(Str) ->
   Len = size(Str),
-  <<Len:16/big, Str/binary>>.
+  <<Len:16, Str/binary>>.
 
 decode_packet_type(Bin) ->
   <<PacketType:4, Flags:4, Rest/binary>> = Bin,
@@ -56,8 +63,10 @@ remaining_length_multiplier(Level) ->
     _ -> error(remining_length_overflow)
   end.
 
-boolean(1) -> true;
-boolean(_) -> false.
+bit_to_boolean(1) -> true;
+bit_to_boolean(_) -> false.
+boolean_to_bit(true) -> 1;
+boolean_to_bit(_) -> 0.
 
 %% ------------------------------------------------------------------
 %% CONNECT
@@ -66,18 +75,18 @@ decode_connect_variable_header(Bin) ->
   {ProtocolName, Remaining1} = decode_utf8(Bin),
   <<ProtocolLevel:8,
   Username:1, Password:1, WillRetain:1, WillQoS:2, WillFlag:1, CleanSession:1, _Reserved:1,
-  KeepAlive:16/big-unsigned-integer,
+  KeepAlive:16,
   Remaining2/binary>> = Remaining1,
 
   {#mqtt_connect{
     protocol_name = ProtocolName,
     protocol_level = ProtocolLevel,
-    has_username = boolean(Username),
-    has_password = boolean(Password),
-    will_retain = boolean(WillRetain),
+    has_username = bit_to_boolean(Username),
+    has_password = bit_to_boolean(Password),
+    will_retain = bit_to_boolean(WillRetain),
     will_qos = WillQoS,
-    will_flag = boolean(WillFlag),
-    clean_session = boolean(CleanSession),
+    will_flag = bit_to_boolean(WillFlag),
+    clean_session = bit_to_boolean(CleanSession),
     keep_alive = KeepAlive}, Remaining2}.
 
 decode_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username = HasUsername, has_password = HasPassword}, Bin) ->
@@ -105,5 +114,13 @@ decode_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username
     username = Username,
     password = Password}, Remaining5}.
 
-
-
+%% ------------------------------------------------------------------
+%% CONNACK
+%% ------------------------------------------------------------------
+encode_connack(Connack = #mqtt_connack{return_code = ReturnCode, session_present = SessionPresent}) ->
+  Type = ?CONNACK,
+  SP = boolean_to_bit(SessionPresent),
+  <<?CONNACK:4, 0:4,
+  2:8,
+  0:7, SP:1,
+  ReturnCode:8>>.
