@@ -59,6 +59,9 @@ remaining_length_multiplier(Level) ->
 boolean(1) -> true;
 boolean(_) -> false.
 
+%% ------------------------------------------------------------------
+%% CONNECT
+%% ------------------------------------------------------------------
 parse_connect_variable_header(Bin) ->
   {ProtocolName, Remaining1} = parse_utf8(Bin),
   <<ProtocolLevel:8,
