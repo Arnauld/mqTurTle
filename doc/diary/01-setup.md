@@ -225,4 +225,10 @@ in call from mqtterl_parser_tests:should_parse_connect_packet__test/0 (/Users/Ar
 
 So let's grab the entire byte and load the flags too.
 
+...
+
+Parse connect Payload `5416e463ad9e74a170f3ef9f514f904735801450`
+
+
+
 
