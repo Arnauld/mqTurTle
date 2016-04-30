@@ -242,9 +242,9 @@ For that we need to plug our codec in the tcp server. We add an intermediate lay
 
 ...
 
-Connack encode: ``
+Connack encode: `f192dac7e6cf2bfbee7819a7480d576df359a9b3`
 
-One done it becomes cumbersome to launch the repl due the number of files required, thus one relies on rebar3
+Once done it becomes cumbersome to launch the repl due the number of files required, thus one relies on rebar3
 
     $ rebar3 shell
     $ mqtterl_tcp_server:start_link(10305, mqtterl_protocol:tcp_handler()).
