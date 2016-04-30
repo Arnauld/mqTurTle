@@ -367,3 +367,8 @@ Then `rebar3 dialyzer` leads to:
 
 
 Hu hu!
+
+# No more happy path!
+
+Let's start to handle invalid cases.
+First case: not enough byte in the packet received

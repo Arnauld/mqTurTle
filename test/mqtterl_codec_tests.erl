@@ -35,7 +35,7 @@ should_parse_remaining_length__test() ->
   {RL2, _} = mqtterl_codec:decode_remaining_length(<<1:1, 65:7, 0:1, 2:7>>),
   ?assertEqual(321, RL2).
 
-should_parse_connect_packet__test() ->
+should_parse_connect_packet__step_by_step__test() ->
   %% `Connects(DUP=False, QoS=0, Retain=False,
   %%           ProtocolName=MQTT, ProtocolVersion=4,
   %%           CleanSession=True, WillFlag=False, KeepAliveTimer=0,
@@ -69,3 +69,43 @@ should_parse_connect_packet__test() ->
   % Nothing should remain...
   ?assertEqual(<<>>, Remaining4),
   ok.
+
+
+should_parse_connect_packet__test() ->
+  %% `Connects(DUP=False, QoS=0, Retain=False,
+  %%           ProtocolName=MQTT, ProtocolVersion=4,
+  %%           CleanSession=True, WillFlag=False, KeepAliveTimer=0,
+  %%           ClientId=myclientid, usernameFlag=False, passwordFlag=False)`
+  Packet = <<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110, 116, 105, 100>>,
+
+  {Type, Header, Payload, Remaining} = mqtterl_codec:decode_packet(Packet),
+
+  ?assertEqual(?CONNECT, Type),
+  ?assertEqual(<<"MQTT">>, Header#mqtt_connect.protocol_name),
+  ?assertEqual(4, Header#mqtt_connect.protocol_level),
+  ?assertEqual(false, Header#mqtt_connect.has_username),
+  ?assertEqual(false, Header#mqtt_connect.has_password),
+  ?assertEqual(0, Header#mqtt_connect.will_qos),
+  ?assertEqual(false, Header#mqtt_connect.will_retain),
+  ?assertEqual(false, Header#mqtt_connect.will_flag),
+  ?assertEqual(true, Header#mqtt_connect.clean_session),
+  ?assertEqual(0, Header#mqtt_connect.keep_alive),
+  ?assertEqual(<<"myclientid">>, Payload#mqtt_connect.client_id),
+  ?assertEqual(undefined, Payload#mqtt_connect.username),
+  ?assertEqual(undefined, Payload#mqtt_connect.password),
+  ?assertEqual(undefined, Payload#mqtt_connect.will_topic),
+  ?assertEqual(undefined, Payload#mqtt_connect.will_message),
+
+  % Nothing should remain...
+  ?assertEqual(<<>>, Remaining),
+  ok.
+
+should_detect_not_enough_bytes__connect_packet__test() ->
+  %% `Connects(DUP=False, QoS=0, Retain=False,
+  %%           ProtocolName=MQTT, ProtocolVersion=4,
+  %%           CleanSession=True, WillFlag=False, KeepAliveTimer=0,
+  %%           ClientId=myclientid, usernameFlag=False, passwordFlag=False)`
+  Packet = <<16>>,
+  Result = mqtterl_codec:decode_packet(Packet),
+  ?assertEqual(not_enough_bytes, Result).
+

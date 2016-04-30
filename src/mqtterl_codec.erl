@@ -18,6 +18,7 @@
 
 %% Message
 
+-export([decode_packet/1]).
 -export([decode_packet_type/1, decode_remaining_length/1]).
 
 -export([decode_connect_variable_header/1, decode_connect_payload/2]).
@@ -32,41 +33,61 @@
 %% The default signedness is unsigned.
 %% The default endianness is big.
 %% ------------------------------------------------------------------
-decode_utf8(Bin) ->
-  <<Len:16, Str:Len/binary, Rest/binary>> = Bin,
-  {Str, Rest}.
+decode_utf8(<<Len:16, Str:Len/binary, Rest/binary>>) -> {Str, Rest};
+decode_utf8(_) -> not_enough_bytes.
 
 encode_utf8(Str) ->
   Len = size(Str),
   <<Len:16, Str/binary>>.
 
-decode_packet_type(Bin) ->
-  <<PacketType:4, Flags:4, Rest/binary>> = Bin,
-  {PacketType, Flags, Rest}.
+decode_packet_type(<<PacketType:4, Flags:4, Rest/binary>>) -> {PacketType, Flags, Rest};
+decode_packet_type(_) -> not_enough_bytes.
 
+-spec(decode_remaining_length(binary()) -> pos_integer() | remaining_length_overflow | not_enough_bytes).
 decode_remaining_length(Bin) ->
   decode_remaining_length(Bin, 0, 0).
 
+decode_remaining_length(_, _, 4) ->
+  remaining_length_overflow;
 decode_remaining_length(<<Flag:1, Value:7, Remaining/binary>>, Acc, Level) ->
   NewValue = Acc + Value * remaining_length_multiplier(Level),
   case Flag of
     0 -> {NewValue, Remaining};
     1 -> decode_remaining_length(Remaining, NewValue, Level + 1)
-  end.
+  end;
+decode_remaining_length(_, _, _) ->
+  not_enough_bytes.
 
-remaining_length_multiplier(Level) ->
-  case Level of
-    0 -> 1;
-    1 -> 128;
-    2 -> 128 * 128;
-    3 -> 128 * 128 * 128;
-    _ -> error(remining_length_overflow)
-  end.
+remaining_length_multiplier(0) -> 1;
+remaining_length_multiplier(1) -> 128;
+remaining_length_multiplier(2) -> 128 * 128;
+remaining_length_multiplier(3) -> 128 * 128 * 128.
 
 bit_to_boolean(1) -> true;
 bit_to_boolean(_) -> false.
 boolean_to_bit(true) -> 1;
 boolean_to_bit(_) -> 0.
+
+%% ------------------------------------------------------------------
+%% dispatcher
+%% ------------------------------------------------------------------
+
+decode_packet(Packet) ->
+  case mqtterl_codec:decode_packet_type(Packet) of
+    {Type, Flags, Remaining1} ->
+      case decode_remaining_length(Remaining1) of
+        {RemainingLength, Remaining2} ->
+          decode_packet(Type, Flags, RemainingLength, Remaining2);
+        Err -> Err
+      end;
+    Err ->
+      Err
+  end.
+
+decode_packet(?CONNECT, _Flags, RemainingLength, Remaining) ->
+  {Header, Remaining1} = decode_connect_variable_header(Remaining),
+  {Payload, Remaining2} = decode_connect_payload(Header, Remaining1),
+  {?CONNECT, Header, Payload, Remaining2}.
 
 %% ------------------------------------------------------------------
 %% CONNECT
