@@ -117,8 +117,7 @@ decode_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username
 %% ------------------------------------------------------------------
 %% CONNACK
 %% ------------------------------------------------------------------
-encode_connack(Connack = #mqtt_connack{return_code = ReturnCode, session_present = SessionPresent}) ->
-  Type = ?CONNACK,
+encode_connack(#mqtt_connack{return_code = ReturnCode, session_present = SessionPresent}) ->
   SP = boolean_to_bit(SessionPresent),
   <<?CONNACK:4, 0:4,
   2:8,

@@ -34,9 +34,9 @@ tcp_on_packet(Socket, State, NewPacket) ->
   handle_packet(Type, Socket, State, Flags, Remaining1).
 
 handle_packet(?CONNECT, Socket, State, _Flags, Remaining1) ->
-  {RemainingLength, Remaining2} = mqtterl_codec:decode_remaining_length(Remaining1),
+  {_RemainingLength, Remaining2} = mqtterl_codec:decode_remaining_length(Remaining1),
   {Header, Remaining3} = mqtterl_codec:decode_connect_variable_header(Remaining2),
-  {Payload, Remaining4} = mqtterl_codec:decode_connect_payload(Header, Remaining3),
+  {_Payload, _Remaining4} = mqtterl_codec:decode_connect_payload(Header, Remaining3),
   gen_tcp:send(Socket, mqtterl_codec:encode_connack(#mqtt_connack{
     session_present = false,
     return_code = ?CONNACK_ACCEPT

@@ -21,7 +21,7 @@
 
 
 start(Port) ->
-  Ref = mqtterl_tcp_server:start_link(Port, {
+  mqtterl_tcp_server:start_link(Port, {
     fun() ->
       io:format("handlerFn:Init~n"),
       state
