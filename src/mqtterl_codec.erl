@@ -60,11 +60,11 @@ boolean(1) -> true;
 boolean(_) -> false.
 
 parse_connect_variable_header(Bin) ->
-  {ProtocolName, Bin1} = parse_utf8(Bin),
+  {ProtocolName, Remaining1} = parse_utf8(Bin),
   <<ProtocolLevel:8,
   Username:1, Password:1, WillRetain:1, WillQoS:2, WillFlag:1, CleanSession:1, _Reserved:1,
   KeepAlive:16/big-unsigned-integer,
-  Bin2/binary>> = Bin1,
+  Bin2/binary>> = Remaining1,
 
   {#mqtt_connect{
     protocol_name = ProtocolName,
