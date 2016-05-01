@@ -11,6 +11,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("mqtterl_message.hrl").
+-include("assert_ext.hrl").
 
 should_parse_utf8_binary__test() ->
   Raw1 = <<0, 6, 84, 111, 112, 105, 99, 65>>,
@@ -105,7 +106,41 @@ should_detect_not_enough_bytes__connect_packet__test() ->
   %%           ProtocolName=MQTT, ProtocolVersion=4,
   %%           CleanSession=True, WillFlag=False, KeepAliveTimer=0,
   %%           ClientId=myclientid, usernameFlag=False, passwordFlag=False)`
-  Packet = <<16>>,
-  Result = mqtterl_codec:decode_packet(Packet),
-  ?assertEqual(not_enough_bytes, Result).
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110, 116>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110, 116, 105>>)),
+  ?assertEqual(not_enough_bytes, mqtterl_codec:decode_packet(<<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110, 116, 105, 100>>)),
+  Packet = <<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110, 116, 105, 100>>,
+  not_enough_bytes_check(0, Packet).
+
+not_enough_bytes_check(Length, Packet) when Length < size(Packet) ->
+  io:format("Using ~p on ~p bytes~n", [Length, size(Packet)]),
+  BitCount = (Length * 8),
+  <<Take:BitCount, _/binary>> = Packet,
+  Result = mqtterl_codec:decode_packet(Take),
+  ?assertEqual(not_enough_bytes, Result),
+  not_enough_bytes_check(Length + 1, Packet);
+not_enough_bytes_check(_, _) -> ok.
+
 

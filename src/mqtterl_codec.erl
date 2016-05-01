@@ -85,57 +85,78 @@ decode_packet(Packet) ->
   end.
 
 decode_packet(?CONNECT, _Flags, RemainingLength, Remaining) ->
-  {Header, Remaining1} = decode_connect_variable_header(Remaining),
-  {Payload, Remaining2} = decode_connect_payload(Header, Remaining1),
-  {?CONNECT, Header, Payload, Remaining2}.
+  case decode_connect_variable_header(Remaining) of
+    {Header, Remaining1} ->
+      case decode_connect_payload(Header, Remaining1) of
+        {Payload, Remaining2} ->
+          {?CONNECT, Header, Payload, Remaining2};
+        Err ->
+          Err
+      end;
+    Err ->
+      Err
+  end.
 
 %% ------------------------------------------------------------------
 %% CONNECT
 %% ------------------------------------------------------------------
 -spec(decode_connect_variable_header(binary()) -> {#mqtt_connect{}, binary()}).
 decode_connect_variable_header(Bin) ->
-  {ProtocolName, Remaining1} = decode_utf8(Bin),
-  <<ProtocolLevel:8,
-  Username:1, Password:1, WillRetain:1, WillQoS:2, WillFlag:1, CleanSession:1, _Reserved:1,
-  KeepAlive:16,
-  Remaining2/binary>> = Remaining1,
+  case decode_utf8(Bin) of
+    {ProtocolName, Remaining} ->
+      case Remaining of
+        <<ProtocolLevel:8,
+        Username:1, Password:1, WillRetain:1, WillQoS:2, WillFlag:1, CleanSession:1, _Reserved:1,
+        KeepAlive:16,
+        Remaining2/binary>> ->
+          Connect = #mqtt_connect{
+            protocol_name = ProtocolName,
+            protocol_level = ProtocolLevel,
+            has_username = bit_to_boolean(Username),
+            has_password = bit_to_boolean(Password),
+            will_retain = bit_to_boolean(WillRetain),
+            will_qos = WillQoS,
+            will_flag = bit_to_boolean(WillFlag),
+            clean_session = bit_to_boolean(CleanSession),
+            keep_alive = KeepAlive},
+          {Connect, Remaining2};
+        _ ->
+          not_enough_bytes
+      end;
 
-  Connect = #mqtt_connect{
-    protocol_name = ProtocolName,
-    protocol_level = ProtocolLevel,
-    has_username = bit_to_boolean(Username),
-    has_password = bit_to_boolean(Password),
-    will_retain = bit_to_boolean(WillRetain),
-    will_qos = WillQoS,
-    will_flag = bit_to_boolean(WillFlag),
-    clean_session = bit_to_boolean(CleanSession),
-    keep_alive = KeepAlive},
-  {Connect, Remaining2}.
+    Err ->
+      Err
+  end.
 
 decode_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username = HasUsername, has_password = HasPassword}, Bin) ->
-  {ClientId, Remaining1} = decode_utf8(Bin),
-  {WillTopic, Remaining2} = case WillFlag of
-                              true -> decode_utf8(Remaining1);
-                              false -> {undefined, Remaining1}
-                            end,
-  {WillMessage, Remaining3} = case WillFlag of
-                                true -> decode_utf8(Remaining2);
-                                false -> {undefined, Remaining2}
-                              end,
-  {Username, Remaining4} = case HasUsername of
-                             true -> decode_utf8(Remaining3);
-                             false -> {undefined, Remaining3}
-                           end,
-  {Password, Remaining5} = case HasPassword of
-                             true -> decode_utf8(Remaining4);
-                             false -> {undefined, Remaining4}
-                           end,
-  {Header#mqtt_connect{
-    client_id = ClientId,
-    will_topic = WillTopic,
-    will_message = WillMessage,
-    username = Username,
-    password = Password}, Remaining5}.
+  case decode_utf8(Bin) of
+    {ClientId, Remaining1} ->
+      {WillTopic, Remaining2} = case WillFlag of
+                                  true -> decode_utf8(Remaining1);
+                                  false -> {undefined, Remaining1}
+                                end,
+      {WillMessage, Remaining3} = case WillFlag of
+                                    true -> decode_utf8(Remaining2);
+                                    false -> {undefined, Remaining2}
+                                  end,
+      {Username, Remaining4} = case HasUsername of
+                                 true -> decode_utf8(Remaining3);
+                                 false -> {undefined, Remaining3}
+                               end,
+      {Password, Remaining5} = case HasPassword of
+                                 true -> decode_utf8(Remaining4);
+                                 false -> {undefined, Remaining4}
+                               end,
+      {Header#mqtt_connect{
+        client_id = ClientId,
+        will_topic = WillTopic,
+        will_message = WillMessage,
+        username = Username,
+        password = Password}, Remaining5};
+    Err ->
+      Err
+  end.
+
 
 %% ------------------------------------------------------------------
 %% CONNACK
