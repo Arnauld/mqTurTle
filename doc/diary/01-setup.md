@@ -372,3 +372,148 @@ Hu hu!
 
 Let's start to handle invalid cases.
 First case: not enough byte in the packet received
+
+let's change the nested:
+
+```erlang
+decode_utf8(<<Len:16, Str:Len/binary, Rest/binary>>) -> {Str, Rest};
+decode_utf8(_) -> not_enough_bytes.
+```
+
+```erlang
+decode_packet_type(<<PacketType:4, Flags:4, Rest/binary>>) -> {PacketType, Flags, Rest};
+decode_packet_type(_) -> not_enough_bytes.
+```
+
+At this point this looks still good :smile:
+
+```erlang
+decode_remaining_length(_, _, 4) ->
+  remaining_length_overflow;
+decode_remaining_length(<<Flag:1, Value:7, Remaining/binary>>, Acc, Level) ->
+  NewValue = Acc + Value * remaining_length_multiplier(Level),
+  case Flag of
+    0 -> {NewValue, Remaining};
+    1 -> decode_remaining_length(Remaining, NewValue, Level + 1)
+  end;
+decode_remaining_length(_, _, _) ->
+  not_enough_bytes.
+```
+
+Here things become less nice with the nested `case of`
+
+```erlang
+decode_packet(Packet) ->
+  case mqtterl_codec:decode_packet_type(Packet) of
+    {Type, Flags, Remaining1} ->
+      case decode_remaining_length(Remaining1) of
+        {RemainingLength, Remaining2} ->
+          decode_packet(Type, Flags, RemainingLength, Remaining2);
+        Err -> Err
+      end;
+    Err ->
+      Err
+  end.
+```
+
+and
+
+```erlang
+decode_packet(?CONNECT, _Flags, RemainingLength, Remaining) ->
+  case decode_connect_variable_header(Remaining) of
+    {Header, Remaining1} ->
+      case decode_connect_payload(Header, Remaining1) of
+        {Payload, Remaining2} ->
+          {?CONNECT, Header, Payload, Remaining2};
+        Err ->
+          Err
+      end;
+    Err ->
+      Err
+  end.
+```
+
+
+
+see commit `0648a747e6fa8a94d8b1871ce277b157eb1568e0`
+
+but how ugly will become the following:
+
+```erlang
+decode_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username = HasUsername, has_password = HasPassword}, Bin) ->
+  case decode_utf8(Bin) of
+    {ClientId, Remaining1} ->
+      {WillTopic, Remaining2} = case WillFlag of
+                                  true -> decode_utf8(Remaining1);
+                                  false -> {undefined, Remaining1}
+                                end,
+      {WillMessage, Remaining3} = case WillFlag of
+                                    true -> decode_utf8(Remaining2);
+                                    false -> {undefined, Remaining2}
+                                  end,
+      {Username, Remaining4} = case HasUsername of
+                                 true -> decode_utf8(Remaining3);
+                                 false -> {undefined, Remaining3}
+                               end,
+      {Password, Remaining5} = case HasPassword of
+                                 true -> decode_utf8(Remaining4);
+                                 false -> {undefined, Remaining4}
+                               end,
+      {Header#mqtt_connect{
+        client_id = ClientId,
+        will_topic = WillTopic,
+        will_message = WillMessage,
+        username = Username,
+        password = Password}, Remaining5};
+    Err ->
+      Err
+  end.
+```
+
+at this point, it is still time to say this is not the best approach...
+back in time and memories, what about [Railway programming](http://fsharpforfunandprofit.com/posts/recipe-part2/), cannot be appplier to erlang too?
+Let's try. 
+First one will consider error not as a fallback of the normal case, e.g.:
+
+```erlang
+decode_packet(Packet) ->
+  case mqtterl_codec:decode_packet_type(Packet) of
+    {Type, Flags, Remaining1} ->
+      case decode_remaining_length(Remaining1) of
+        {RemainingLength, Remaining2} ->
+          decode_packet(Type, Flags, RemainingLength, Remaining2);
+        Err -> Err
+      end;
+    Err ->
+      Err
+  end.
+```
+
+would be changed to
+
+```erlang
+decode_packet(Packet) ->
+  case mqtterl_codec:decode_packet_type(Packet) of
+    {Type, Flags, Remaining1} ->
+      case decode_remaining_length(Remaining1) of
+        {RemainingLength, Remaining2} ->
+          decode_packet(Type, Flags, RemainingLength, Remaining2);
+        Err -> Err
+      end;
+    {error, Reason} ->
+      {error, Reason}
+  end.
+```
+
+by doing so it is possible to know from a generic point of view (whatever the normal case and return type) if an error occurs.
+Error datastructure is now known everytime whereas result datastructure can be whatever:
+
+`{error, Reason}` and `{ok, Result}` this will c
+
+Thus one need to change:
+
+```erlang
+decode_utf8(<<Len:16, Str:Len/binary, Rest/binary>>) -> {ok, {Str, Rest}};
+decode_utf8(_) -> {error, not_enough_bytes}.
+```
+ 
