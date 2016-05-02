@@ -10,7 +10,7 @@
 -author("Arnauld").
 -include("mqtterl_message.hrl").
 
--record(state, {}).
+-record(state, {remaining_bytes = <<>> :: binary()}).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -30,16 +30,23 @@ tcp_handler_init() ->
   #state{}.
 
 tcp_on_packet(Socket, State, NewPacket) ->
-  {Type, Flags, Remaining1} = mqtterl_codec:decode_packet_type(NewPacket),
-  handle_packet(Type, Socket, State, Flags, Remaining1).
+  Packet = case State#state.remaining_bytes of
+             <<>> ->
+               NewPacket;
+             Bytes ->
+               <<Bytes/binary, NewPacket/binary>>
+           end,
+  {Type, Message, RemainingBytes} = mqtterl_codec:decode_packet(Packet),
+  NewState = handle_packet(Type, Message, Socket, State),
+  NewState#state{remaining_bytes = RemainingBytes}.
 
-handle_packet(?CONNECT, Socket, State, _Flags, Remaining1) ->
-  {_RemainingLength, Remaining2} = mqtterl_codec:decode_remaining_length(Remaining1),
-  {Header, Remaining3} = mqtterl_codec:decode_connect_variable_header(Remaining2),
-  {_Payload, _Remaining4} = mqtterl_codec:decode_connect_payload(Header, Remaining3),
+handle_packet(?CONNECT, _Message, Socket, State) ->
   gen_tcp:send(Socket, mqtterl_codec:encode_connack(#mqtt_connack{
     session_present = false,
     return_code = ?CONNACK_ACCEPT
   })),
+  State;
+
+handle_packet(?DISCONNECT, _Message, _Socket, State) ->
   State.
 

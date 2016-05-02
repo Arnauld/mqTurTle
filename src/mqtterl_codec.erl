@@ -84,7 +84,7 @@ decode_packet(Packet) ->
           % fail otherwise if the message is badly formatted
           %
             <<Remaining2:RemainingLength/binary, Remaining3/binary>> ->
-              {decode_packet(Type, Flags, Remaining2), Remaining3};
+              {Type, decode_packet(Type, Flags, Remaining2), Remaining3};
 
             _ ->
               not_enough_bytes
@@ -100,7 +100,10 @@ decode_packet(Packet) ->
 decode_packet(?CONNECT, _Flags, Remaining) ->
   {Header, Remaining1} = decode_connect_variable_header(Remaining),
   {Payload, <<>>} = decode_connect_payload(Header, Remaining1),
-  Payload.
+  Payload;
+
+decode_packet(?DISCONNECT, _Flags, <<>>) ->
+  #mqtt_disconnect{}.
 
 %% ------------------------------------------------------------------
 %% CONNECT

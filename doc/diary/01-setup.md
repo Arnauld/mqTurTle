@@ -517,3 +517,73 @@ decode_utf8(<<Len:16, Str:Len/binary, Rest/binary>>) -> {ok, {Str, Rest}};
 decode_utf8(_) -> {error, not_enough_bytes}.
 ```
  
+NO... Railway programming is well suited when function take only 1 parameter. Actually polymorphism in erlang is based 
+on arity...
+
+Actually there is a simpler manner to handle things in our case: mqtt protocol defines the `remaining length` i.e. the
+expected length of the variable header and the payload. Thus we will only check field by field until the `remaining length` is
+known afterwards one simply read it as expected. If the remaining is not well serialized, it will simply fail. One only has to 
+make sure only the `remaining_length` part is read to prevent corruption of the remaining bytes...
+In case of error, the connection should be discarded without any caution.
+
+# Back to the test client
+
+Git commit `725da594efa9277b10e5e4aea76bcf586c2ac31c`
+
+Terminal 1:
+
+    $ rebar3 shell
+    ===> Verifying dependencies...
+    ===> Compiling mqtterl
+    Erlang/OTP 18 [erts-7.2.1] [source] [64-bit] [smp:4:4] [async-threads:0] [hipe] [kernel-poll:false]
+    
+    Eshell V7.2.1  (abort with ^G)
+    1> mqtterl_tcp_server:start_link(10305, mqtterl_protocol:tcp_handler()).
+    Ready to accept connection on port 10305
+    {ok,{state,#Port<0.39501>,
+               {#Fun<mqtterl_protocol.tcp_handler_init.0>,
+                #Fun<mqtterl_protocol.tcp_on_packet.3>}}}
+
+Terminal 2:
+
+    $ python3 run_proxy.py localhost 10305
+    
+Terminal 3:
+
+    $ python3 client_test.py -p 10306
+    
+A look at the `Terminal 2`:
+
+    20160502 185019.428204 C to S myclientid Connects(DUP=False, QoS=0, Retain=False, ProtocolName=MQTT, ProtocolVersion=4, CleanSession=True, WillFlag=False, KeepAliveTimer=0, ClientId=myclientid, usernameFlag=False, passwordFlag=False)
+    ['0x10', '0x16', '0x0', '0x4', '0x4d', '0x51', '0x54', '0x54', '0x4', '0x2', '0x0', '0x0', '0x0', '0xa', '0x6d', '0x79', '0x63', '0x6c', '0x69', '0x65', '0x6e', '0x74', '0x69', '0x64']
+    b'\x10\x16\x00\x04MQTT\x04\x02\x00\x00\x00\nmyclientid'
+    20160502 185019.429525 S to C myclientid Connacks(DUP=False, QoS=0, Retain=False, Session present=False, ReturnCode=0)
+    20160502 185019.532555 C to S myclientid Disconnects(DUP=False, QoS=0, Retain=False)
+    ['0xe0', '0x0']
+    b'\xe0\x00'
+    20160502 185019.533149 client myclientid connection closing
+    (None, None, None) True
+    
+One can see the `Connect` <-> `Connack` exchange, but a unknown call afterwards: `Disconnect`
+Which is confirmed in the `Terminal 1`
+
+    
+    Got packet: <<224,0>>
+    =ERROR REPORT==== 2-May-2016::18:50:19 ===
+    Error in process <0.79.0> with exit value:
+    {function_clause,
+        [{mqtterl_protocol,handle_packet,
+             [14,#Port<0.39502>,{state},0,<<0>>],
+             [{file,
+                  "/Users/Arnauld/Projects/mqtterl/_build/default/lib/mqtterl/src/mqtterl_protocol.erl"},
+              {line,36}]},
+         {mqtterl_tcp_server,listen_loop,3,
+             [{file,
+                  "/Users/Arnauld/Projects/mqtterl/_build/default/lib/mqtterl/src/mqtterl_tcp_server.erl"},
+              {line,76}]}]}
+              
+              
+The interesting part is `[14,#Port<0.39502>,{state},0,<<0>>]`. 
+A look at the specification highlights the code `14` corresponds to the `DISCONNECT` packet type.
+
+

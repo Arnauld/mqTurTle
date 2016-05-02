@@ -57,3 +57,5 @@
   session_present = false :: boolean(),
   return_code = ?CONNACK_SERVER :: mqtt_connack()
 }).
+
+-record(mqtt_disconnect, {}).

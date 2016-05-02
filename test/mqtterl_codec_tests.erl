@@ -79,8 +79,9 @@ should_parse_connect_packet__test() ->
   %%           ClientId=myclientid, usernameFlag=False, passwordFlag=False)`
   Packet = <<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110, 116, 105, 100>>,
 
-  {Message, Remaining} = mqtterl_codec:decode_packet(Packet),
+  {Type, Message, Remaining} = mqtterl_codec:decode_packet(Packet),
 
+  ?assertEqual(?CONNECT, Type),
   ?assertEqual(<<"MQTT">>, Message#mqtt_connect.protocol_name),
   ?assertEqual(4, Message#mqtt_connect.protocol_level),
   ?assertEqual(false, Message#mqtt_connect.has_username),
@@ -107,6 +108,24 @@ should_detect_not_enough_bytes__connect_packet__test() ->
   %%           ClientId=myclientid, usernameFlag=False, passwordFlag=False)`
   Packet = <<16, 22, 0, 4, 77, 81, 84, 84, 4, 2, 0, 0, 0, 10, 109, 121, 99, 108, 105, 101, 110, 116, 105, 100>>,
   not_enough_bytes_check(0, Packet).
+
+
+should_parse_disconnect_packet__test() ->
+  %% `Disconnects(DUP=False, QoS=0, Retain=False)`
+  Packet = <<224, 0>>,
+
+  {Type, Message, Remaining} = mqtterl_codec:decode_packet(Packet),
+  ?assertEqual(?DISCONNECT, Type),
+  ?assertEqual(#mqtt_disconnect{}, Message),
+
+  % Nothing should remain...
+  ?assertEqual(<<>>, Remaining),
+  ok.
+
+
+%%
+%%
+%%
 
 not_enough_bytes_check(Length, Packet) when Length < size(Packet) ->
   io:format("Using ~p on ~p bytes~n", [Length, size(Packet)]),
