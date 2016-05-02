@@ -114,7 +114,7 @@ not_enough_bytes_check(Length, Packet) when Length < size(Packet) ->
   <<Take:BitCount, _/binary>> = Packet,
   Result = mqtterl_codec:decode_packet(Take),
   ?assertEqualWithMessage(
-    io_lib:format("Using ~p on ~p bytes~n", [Length, size(Packet)]),
+    io_lib:format("Using ~p on ~p bytes", [Length, size(Packet)]),
     not_enough_bytes,
     Result),
   not_enough_bytes_check(Length + 1, Packet);

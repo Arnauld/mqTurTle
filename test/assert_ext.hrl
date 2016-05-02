@@ -25,7 +25,7 @@
             {expression, (??Expr)},
             {expected, __X},
             {value, __V},
-            {message, (Message)}]})
+            {message, list_to_atom(lists:flatten(Message))}]})
       end
     end)(Expect))
   end).
