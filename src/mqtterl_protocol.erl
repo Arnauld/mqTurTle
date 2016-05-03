@@ -59,5 +59,30 @@ handle_packet(?SUBSCRIBE, #mqtt_subscribe{packet_id = PacketId, topic_filters = 
     end, TopicFilters)
   },
   gen_tcp:send(Socket, mqtterl_codec:encode_suback(Suback)),
-  State.
+  State;
+
+handle_packet(?PUBLISH, #mqtt_publish{qos = QoS, packet_id = PacketId}, Socket, State) ->
+  case QoS of
+    ?QOS0 ->
+      % Expected response: None
+      State;
+
+    ?QOS1 ->
+      % Expected response: PUBACK
+      Puback = #mqtt_puback{
+        packet_id = PacketId
+      },
+      gen_tcp:send(Socket, mqtterl_codec:encode_puback(Puback)),
+      State;
+
+    ?QOS2 ->
+      % Expected response: PUBREC
+      % Expected response: PUBACK
+      Puback = #mqtt_pubrec{
+        packet_id = PacketId
+      },
+      gen_tcp:send(Socket, mqtterl_codec:encode_pubrec(Puback)),
+      State
+  end.
+
 

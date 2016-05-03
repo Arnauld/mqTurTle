@@ -607,3 +607,9 @@ Back to the tests, the next one is, in `Terminal 1`:
 
 Code `8` corresponds to the `SUBSCRIBE` packet type.
 
+Job's done with `SUBSCRIBE` and `SUBACK` commit `88193e3aa166fbb93b47eeece734aca68619bab8`
+
+## PUBLISH
+
+
+

@@ -25,6 +25,8 @@
 -export([decode_connect_variable_header/1, decode_connect_payload/2]).
 -export([encode_connack/1]).
 -export([encode_suback/1]).
+-export([encode_puback/1]).
+-export([encode_pubrec/1]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -121,6 +123,25 @@ decode_packet(?SUBSCRIBE, _Flags, Binaries) ->
   #mqtt_subscribe{
     packet_id = PacketId,
     topic_filters = TopicFilters
+  };
+
+decode_packet(?PUBLISH, Flags, Binaries) ->
+  <<DUP:1, QoS:2, Retain:1>> = <<Flags:4>>,
+  {Topic, Remaining1} = decode_utf8(Binaries),
+  {PacketId, Payload} = case QoS of
+                          _ when QoS == ?QOS1; QoS == ?QOS2 ->
+                            <<PacketId0:16/big-unsigned-integer, RemainingBytes/binary>> = Remaining1,
+                            {PacketId0, RemainingBytes};
+                          _ ->
+                            {undefined, Remaining1}
+                        end,
+  #mqtt_publish{
+    dup = bit_to_boolean(DUP),
+    qos = QoS,
+    retain = bit_to_boolean(Retain),
+    topic = Topic,
+    packet_id = PacketId,
+    payload = Payload
   }.
 
 %% ------------------------------------------------------------------
@@ -196,11 +217,19 @@ encode_suback(#mqtt_suback{packet_id = PacketId, return_codes = ReturnCodes}) ->
   Len = 2 + length(ReturnCodes),
   LenBinaries = encode_remaining_length(Len),
   ReturnCodesBinaries = lists:foldl(fun(Code, Acc) ->
-    Acc1 = <<Acc/binary, Code:8>>,
-    io:format("Encoding '~p': ~p -> ~p~n", [Code, Acc, Acc1]),
-    Acc1
+    <<Acc/binary, Code:8>>
   end, <<>>, ReturnCodes),
-  Encoded = <<?SUBACK:4, 0:4, LenBinaries/binary, PacketId:16, ReturnCodesBinaries/binary>>,
-  io:format("Assembling ~p + ~p => ~p~n", [LenBinaries, ReturnCodesBinaries, Encoded]),
-  Encoded.
+  <<?SUBACK:4, 0:4, LenBinaries/binary, PacketId:16, ReturnCodesBinaries/binary>>.
+
+%% ------------------------------------------------------------------
+%% PUBACK
+%% ------------------------------------------------------------------
+encode_puback(#mqtt_puback{packet_id = PacketId}) ->
+  <<?PUBACK:4, 0:4, 2:8, PacketId:16>>.
+
+%% ------------------------------------------------------------------
+%% PUBREC
+%% ------------------------------------------------------------------
+encode_pubrec(#mqtt_pubrec{packet_id = PacketId}) ->
+  <<?PUBREC:4, 0:4, 2:8, PacketId:16>>.
 

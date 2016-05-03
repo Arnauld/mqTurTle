@@ -75,6 +75,31 @@
 -define(SUBACK_FAILURE, 16#80). %% Number base#value
 
 -record(mqtt_suback, {
-  packet_id :: binary(),
+  packet_id :: integer(),
   return_codes :: mqtt_qos() | ?SUBACK_FAILURE
 }).
+
+-record(mqtt_publish, {
+  dup = false :: boolean(),
+  qos = ?QOS0 :: mqtt_qos(),
+  retain = false :: boolean(),
+  packet_id :: integer(),
+  topic :: binary(),
+  payload :: binary()
+}).
+
+-record(mqtt_puback, {
+  packet_id :: integer()
+}).
+
+
+-record(mqtt_pubrec, {
+  packet_id :: integer()
+}).
+
+
+
+
+
+
+
