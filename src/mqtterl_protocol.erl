@@ -83,6 +83,14 @@ handle_packet(?PUBLISH, #mqtt_publish{qos = QoS, packet_id = PacketId}, Socket, 
       },
       gen_tcp:send(Socket, mqtterl_codec:encode_pubrec(Puback)),
       State
-  end.
+  end;
+
+handle_packet(?PUBREL, #mqtt_pubrel{packet_id = PacketId}, Socket, State) ->
+  Pubcomp = #mqtt_pubcomp{
+    packet_id = PacketId
+  },
+  gen_tcp:send(Socket, mqtterl_codec:encode_pubcomp(Pubcomp)),
+  State.
+
 
 

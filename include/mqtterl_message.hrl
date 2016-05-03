@@ -97,6 +97,14 @@
   packet_id :: integer()
 }).
 
+-record(mqtt_pubrel, {
+  packet_id :: integer()
+}).
+
+-record(mqtt_pubcomp, {
+  packet_id :: integer()
+}).
+
 
 
 

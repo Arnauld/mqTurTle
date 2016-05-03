@@ -27,6 +27,7 @@
 -export([encode_suback/1]).
 -export([encode_puback/1]).
 -export([encode_pubrec/1]).
+-export([encode_pubcomp/1]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -142,6 +143,13 @@ decode_packet(?PUBLISH, Flags, Binaries) ->
     topic = Topic,
     packet_id = PacketId,
     payload = Payload
+  };
+
+decode_packet(?PUBREL, Flags, Binaries) ->
+  <<0:1, 1:2, 0:1>> = <<Flags:4>>,
+  <<PacketId:16/big-unsigned-integer>> = Binaries,
+  #mqtt_pubrel{
+    packet_id = PacketId
   }.
 
 %% ------------------------------------------------------------------
@@ -232,4 +240,11 @@ encode_puback(#mqtt_puback{packet_id = PacketId}) ->
 %% ------------------------------------------------------------------
 encode_pubrec(#mqtt_pubrec{packet_id = PacketId}) ->
   <<?PUBREC:4, 0:4, 2:8, PacketId:16>>.
+
+
+%% ------------------------------------------------------------------
+%% PUBCOMP
+%% ------------------------------------------------------------------
+encode_pubcomp(#mqtt_pubcomp{packet_id = PacketId}) ->
+  <<?PUBCOMP:4, 0:4, 2:8, PacketId:16>>.
 

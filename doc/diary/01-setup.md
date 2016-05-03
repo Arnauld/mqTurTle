@@ -611,5 +611,19 @@ Job's done with `SUBSCRIBE` and `SUBACK` commit `88193e3aa166fbb93b47eeece734aca
 
 ## PUBLISH
 
+Job's done with `PUBLISH`, `PUBACK` and `PUBREC` commit `39c55468445569a87e47689424c01f579c6df44c`
+
+`PUBREL`
+
+    Got packet: <<98,2,0,4>>
+    2>
+    =ERROR REPORT==== 3-May-2016::21:12:20 ===
+    Error in process <0.113.0> with exit value:
+    {function_clause,
+        [{mqtterl_codec,decode_packet,
+             [6,2,<<0,4>>],
+             [{file,
+                  "/Users/Arnauld/Projects/mqtterl/_build/default/lib/mqtterl/src/mqtterl_codec.erl"},
+              {line,112}]},
 
 
