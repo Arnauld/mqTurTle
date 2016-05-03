@@ -19,10 +19,12 @@
 %% Message
 
 -export([decode_packet/1]).
--export([decode_packet_type/1, decode_remaining_length/1]).
+-export([decode_packet_type/1]).
+-export([decode_remaining_length/1, encode_remaining_length/1]).
 
 -export([decode_connect_variable_header/1, decode_connect_payload/2]).
 -export([encode_connack/1]).
+-export([encode_suback/1]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -57,6 +59,14 @@ decode_remaining_length(<<Flag:1, Value:7, Remaining/binary>>, Acc, Level) ->
   end;
 decode_remaining_length(_, _, _) ->
   not_enough_bytes.
+
+encode_remaining_length(Num) when Num =< 2#01111111 ->
+  <<0:1, Num:7>>;
+encode_remaining_length(Num) ->
+  Level = Num rem 2#10000000,
+  Remaining = Num div 2#10000000,
+  Encoded = encode_remaining_length(Remaining),
+  <<1:1, Level:7, Encoded/binary>>.
 
 remaining_length_multiplier(0) -> 1;
 remaining_length_multiplier(1) -> 128;
@@ -97,13 +107,21 @@ decode_packet(Packet) ->
       Err
   end.
 
-decode_packet(?CONNECT, _Flags, Remaining) ->
-  {Header, Remaining1} = decode_connect_variable_header(Remaining),
-  {Payload, <<>>} = decode_connect_payload(Header, Remaining1),
+decode_packet(?CONNECT, _Flags, Binaries) ->
+  {Header, Remaining} = decode_connect_variable_header(Binaries),
+  {Payload, <<>>} = decode_connect_payload(Header, Remaining),
   Payload;
 
 decode_packet(?DISCONNECT, _Flags, <<>>) ->
-  #mqtt_disconnect{}.
+  #mqtt_disconnect{};
+
+decode_packet(?SUBSCRIBE, _Flags, Binaries) ->
+  <<PacketId:16/big-unsigned-integer, Remaining/binary>> = Binaries,
+  TopicFilters = decode_subscribe_topic_filters([], Remaining),
+  #mqtt_subscribe{
+    packet_id = PacketId,
+    topic_filters = TopicFilters
+  }.
 
 %% ------------------------------------------------------------------
 %% CONNECT
@@ -160,3 +178,28 @@ encode_connack(#mqtt_connack{return_code = ReturnCode, session_present = Session
   2:8,
   0:7, SP:1,
   ReturnCode:8>>.
+
+
+%% ------------------------------------------------------------------
+%% SUBSCRIBE
+%% ------------------------------------------------------------------
+decode_subscribe_topic_filters(TopicFilters, <<>>) -> lists:reverse(TopicFilters);
+decode_subscribe_topic_filters(TopicFilters, Bin) ->
+  {Topic, <<_Reserved:6, QoS:2, Remaining/binary>>} = decode_utf8(Bin),
+  decode_subscribe_topic_filters([{Topic, QoS} | TopicFilters], Remaining).
+
+
+%% ------------------------------------------------------------------
+%% SUBACK
+%% ------------------------------------------------------------------
+encode_suback(#mqtt_suback{packet_id = PacketId, return_codes = ReturnCodes}) ->
+  Len = 2 + length(ReturnCodes),
+  LenBinaries = encode_remaining_length(Len),
+  ReturnCodesBinaries = lists:foldl(fun({_Topic, QoS}, Acc) ->
+    <<Acc/binary, 0:1, QoS:7>>
+  end, <<>>, ReturnCodes),
+  <<?SUBACK:4, 0:4,
+  LenBinaries/binary,
+  ReturnCodesBinaries/binary
+  >>.
+

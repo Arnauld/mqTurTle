@@ -31,10 +31,17 @@ should_encode_utf8_binary__test() ->
 
 
 should_parse_remaining_length__test() ->
-  {RL1, _} = mqtterl_codec:decode_remaining_length(<<0:1, 123:7, 0:1, 2:7>>),
+  {RL1, _} = mqtterl_codec:decode_remaining_length(<<0:1, 123:7>>),
   ?assertEqual(123, RL1),
   {RL2, _} = mqtterl_codec:decode_remaining_length(<<1:1, 65:7, 0:1, 2:7>>),
   ?assertEqual(321, RL2).
+
+should_encode_remaining_length__test() ->
+  RL1 = mqtterl_codec:encode_remaining_length(123),
+  ?assertEqual(<<0:1, 123:7>>, RL1),
+  RL2 = mqtterl_codec:encode_remaining_length(321),
+  ?assertEqual(<<1:1, 65:7, 0:1, 2:7>>, RL2).
+
 
 should_parse_connect_packet__step_by_step__test() ->
   %% `Connects(DUP=False, QoS=0, Retain=False,
@@ -117,6 +124,19 @@ should_parse_disconnect_packet__test() ->
   {Type, Message, Remaining} = mqtterl_codec:decode_packet(Packet),
   ?assertEqual(?DISCONNECT, Type),
   ?assertEqual(#mqtt_disconnect{}, Message),
+
+  % Nothing should remain...
+  ?assertEqual(<<>>, Remaining),
+  ok.
+
+should_parse_subscribe_packet__test() ->
+  %% `Subscribes(DUP=False, QoS=1, Retain=False, MsgId=2, Data=[('#', 0)])`
+  Packet = <<130, 6, 0, 2, 0, 1, 35, 0>>,
+
+  {Type, Message, Remaining} = mqtterl_codec:decode_packet(Packet),
+  ?assertEqual(?SUBSCRIBE, Type),
+  ?assertEqual(2, Message#mqtt_subscribe.packet_id),
+  ?assertEqual([{<<"#">>, 0}], Message#mqtt_subscribe.topic_filters),
 
   % Nothing should remain...
   ?assertEqual(<<>>, Remaining),

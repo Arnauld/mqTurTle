@@ -582,8 +582,28 @@ Which is confirmed in the `Terminal 1`
                   "/Users/Arnauld/Projects/mqtterl/_build/default/lib/mqtterl/src/mqtterl_tcp_server.erl"},
               {line,76}]}]}
               
+## DISCONNECT              
               
 The interesting part is `[14,#Port<0.39502>,{state},0,<<0>>]`. 
 A look at the specification highlights the code `14` corresponds to the `DISCONNECT` packet type.
 
+Job's done commit `b123a1b4a60c29a73c023c6c0aff8504b542ffc1`
+
+## SUBSCRIBE
+
+Back to the tests, the next one is, in `Terminal 1`:
+
+    Got packet: <<130,6,0,2,0,1,35,0>>
+    2>
+    =ERROR REPORT==== 2-May-2016::19:26:37 ===
+    Error in process <0.90.0> with exit value:
+    {function_clause,
+        [{mqtterl_codec,decode_packet,
+             [8,2,<<0,2,0,1,35,0>>],
+             [{file,
+                  "/Users/Arnauld/Projects/mqtterl/_build/default/lib/mqtterl/src/mqtterl_codec.erl"},
+              {line,100}]},
+              ...
+
+Code `8` corresponds to the `SUBSCRIBE` packet type.
 

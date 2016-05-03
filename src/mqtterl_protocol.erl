@@ -41,12 +41,23 @@ tcp_on_packet(Socket, State, NewPacket) ->
   NewState#state{remaining_bytes = RemainingBytes}.
 
 handle_packet(?CONNECT, _Message, Socket, State) ->
-  gen_tcp:send(Socket, mqtterl_codec:encode_connack(#mqtt_connack{
+  Connack = #mqtt_connack{
     session_present = false,
     return_code = ?CONNACK_ACCEPT
-  })),
+  },
+  gen_tcp:send(Socket, mqtterl_codec:encode_connack(Connack)),
   State;
 
 handle_packet(?DISCONNECT, _Message, _Socket, State) ->
+  State;
+
+handle_packet(?SUBSCRIBE, #mqtt_subscribe{packet_id = PacketId, topic_filters = TopicFilters}, Socket, State) ->
+  Suback = #mqtt_suback{
+    packet_id = PacketId,
+    return_codes = lists:map(fun(_TopicFilter) ->
+      ?QOS0
+    end, TopicFilters)
+  },
+  gen_tcp:send(Socket, mqtterl_codec:encode_suback(Suback)),
   State.
 

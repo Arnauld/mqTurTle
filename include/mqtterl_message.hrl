@@ -59,3 +59,22 @@
 }).
 
 -record(mqtt_disconnect, {}).
+
+-record(mqtt_subscribe, {
+  packet_id :: binary(),
+  topic_filters = [] :: [binary()]
+}).
+
+
+-define(QOS0, 0). %% At most once
+-define(QOS1, 1). %% At least once
+-define(QOS2, 2). %% Exactly once
+
+-type mqtt_qos() :: ?QOS0..?QOS2.
+
+-define(SUBACK_FAILURE, 16#80). %% Number base#value
+
+-record(mqtt_suback, {
+  packet_id :: binary(),
+  return_codes :: mqtt_qos() | ?SUBACK_FAILURE
+}).
