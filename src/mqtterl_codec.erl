@@ -195,11 +195,12 @@ decode_subscribe_topic_filters(TopicFilters, Bin) ->
 encode_suback(#mqtt_suback{packet_id = PacketId, return_codes = ReturnCodes}) ->
   Len = 2 + length(ReturnCodes),
   LenBinaries = encode_remaining_length(Len),
-  ReturnCodesBinaries = lists:foldl(fun({_Topic, QoS}, Acc) ->
-    <<Acc/binary, 0:1, QoS:7>>
+  ReturnCodesBinaries = lists:foldl(fun(Code, Acc) ->
+    Acc1 = <<Acc/binary, Code:8>>,
+    io:format("Encoding '~p': ~p -> ~p~n", [Code, Acc, Acc1]),
+    Acc1
   end, <<>>, ReturnCodes),
-  <<?SUBACK:4, 0:4,
-  LenBinaries/binary,
-  ReturnCodesBinaries/binary
-  >>.
+  Encoded = <<?SUBACK:4, 0:4, LenBinaries/binary, PacketId:16, ReturnCodesBinaries/binary>>,
+  io:format("Assembling ~p + ~p => ~p~n", [LenBinaries, ReturnCodesBinaries, Encoded]),
+  Encoded.
 

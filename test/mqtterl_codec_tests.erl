@@ -142,6 +142,15 @@ should_parse_subscribe_packet__test() ->
   ?assertEqual(<<>>, Remaining),
   ok.
 
+should_encode_suback__test() ->
+  Suback = #mqtt_suback{packet_id = 17, return_codes = [?QOS0, ?QOS2, ?SUBACK_FAILURE]},
+  ?assertEqual(<<?SUBACK:4, 0:4,
+  0:1, 5:7, % remaining length 2 (packet id) + 3 (return codes) = 5
+  17:16, % packet_id
+  ?QOS0:8,
+  ?QOS2:8,
+  ?SUBACK_FAILURE:8>>, mqtterl_codec:encode_suback(Suback)).
+
 
 %%
 %%
