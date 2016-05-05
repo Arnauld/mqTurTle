@@ -65,22 +65,38 @@ accept(State) ->
 listen_loop_(Socket, {HandlerInitFn, HandlerFn}) ->
   %% make sure to acknowledge owner rights transmission finished
   receive ack -> ok end,
+
+  ready_to_receive_tcp_data(Socket),
   listen_loop(Socket, HandlerFn, HandlerInitFn()).
 
-listen_loop(Socket, HandlerFn, State) ->
+ready_to_receive_tcp_data(Socket) ->
   %% set soscket options to receive messages directly into itself
-  inet:setopts(Socket, [{active, once}]),
+  inet:setopts(Socket, [{active, once}]).
+
+listen_loop(Socket, HandlerFn, State) ->
   receive
     {tcp, Socket, NewData} ->
-      io:format("Got packet: ~p~n", [NewData]),
-      NewState = HandlerFn(Socket, State, NewData),
-      listen_loop(Socket, HandlerFn, NewState);
+      io:format("tcp::Got packet: ~p~n", [NewData]),
+      case HandlerFn(Socket, State, NewData) of
+        {ok, NewState} ->
+          ready_to_receive_tcp_data(Socket),
+          listen_loop(Socket, HandlerFn, NewState);
+
+        {disconnect, _} ->
+          gen_tcp:close(Socket)
+      end;
 
     {tcp_closed, Socket} ->
-      io:format("Socket ~p closed~n", [Socket]);
+      io:format("tcp::Socket ~p closed~n", [Socket]);
 
     {tcp_error, Socket, Reason} ->
-      io:format("Error on socket ~p reason: ~p~n", [Socket, Reason])
+      io:format("tcp::Socket ~p error reason: ~p~n", [Socket, Reason]),
+      gen_tcp:close(Socket);
+
+    {send, Payload} ->
+      io:format("tcp::Socket ~p sending message: ~p~n", [Socket, Payload]),
+      gen_tcp:send(Socket, Payload),
+      listen_loop(Socket, HandlerFn, State)
   end.
 
 %%%------------------------------------------------------------------------

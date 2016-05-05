@@ -159,7 +159,7 @@ decode_packet(?PUBREL, Flags, Binaries) ->
 decode_connect_variable_header(Bin) ->
   {ProtocolName, Remaining} = decode_utf8(Bin),
   <<ProtocolLevel:8,
-  Username:1, Password:1, WillRetain:1, WillQoS:2, WillFlag:1, CleanSession:1, _Reserved:1,
+  Username:1, Password:1, WillRetain:1, WillQoS:2, WillFlag:1, CleanSession:1, Reserved:1,
   KeepAlive:16, PayloadBin/binary>> = Remaining,
   {#mqtt_connect{
     protocol_name = ProtocolName,
@@ -169,8 +169,9 @@ decode_connect_variable_header(Bin) ->
     will_retain = bit_to_boolean(WillRetain),
     will_qos = WillQoS,
     will_flag = bit_to_boolean(WillFlag),
-    clean_session = bit_to_boolean(CleanSession),
-    keep_alive = KeepAlive}, PayloadBin}.
+    clean_session = CleanSession,
+    keep_alive = KeepAlive,
+    reserved_flag = Reserved}, PayloadBin}.
 
 decode_connect_payload(Header = #mqtt_connect{will_flag = WillFlag, has_username = HasUsername, has_password = HasPassword}, Bin) ->
   {ClientId, Remaining1} = decode_utf8(Bin),

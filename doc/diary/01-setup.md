@@ -627,3 +627,6 @@ Job's done with `PUBLISH`, `PUBACK` and `PUBREC` commit `39c55468445569a87e47689
               {line,112}]},
 
 
+And now... commit `3c6635d28575d9566219572bc93feba684db5eb8` all decoding/encoding required for the test suite seems done.
+One can now know start to think about the broker logic...
+

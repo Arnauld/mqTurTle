@@ -35,8 +35,9 @@
   will_retain :: boolean(),
   will_qos :: integer(),
   will_flag :: boolean(),
-  clean_session :: boolean(),
+  clean_session :: pos_integer(),
   keep_alive :: pos_integer(),
+  reserved_flag :: pos_integer(),
   % PAYLOAD
   client_id = undefined :: binary() | undefined,
   username = undefined :: binary() | undefined,
