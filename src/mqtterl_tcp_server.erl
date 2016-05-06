@@ -13,7 +13,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/2]).
+-export([start_link/2, stop/0]).
 
 -define(SERVER, ?MODULE).
 
@@ -22,7 +22,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -36,15 +35,29 @@ start_link(Port, Handler = {InitFn, HandlerFn}) when is_integer(Port), is_functi
   case gen_tcp:listen(Port, Opts) of
     {ok, ListenSocket} ->
       State = #state{listener = ListenSocket, handler = Handler},
-      spawn_link(fun() ->
+      Pid = spawn_link(fun() ->
         io:format("Ready to accept connection on port ~p~n", [Port]),
         accept(State)
       end),
-      {ok, State};
+      {ok, Pid};
 
     {error, Reason} ->
       {stop, Reason}
   end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Stop the server
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(stop() -> ok).
+stop() ->
+  ok.
+
+%%%===================================================================
+%%% INTERNAL FUNCTIONS
+%%%===================================================================
 
 accept(State) ->
   #state{listener = ListenSocket, handler = Handler} = State,
@@ -83,7 +96,10 @@ listen_loop(Socket, HandlerFn, State) ->
           listen_loop(Socket, HandlerFn, NewState);
 
         {disconnect, _} ->
-          gen_tcp:close(Socket)
+          gen_tcp:close(Socket);
+
+        What ->
+          io:format("tcp::unknown message from handler ~p~n", [What])
       end;
 
     {tcp_closed, Socket} ->
@@ -96,7 +112,10 @@ listen_loop(Socket, HandlerFn, State) ->
     {send, Payload} ->
       io:format("tcp::Socket ~p sending message: ~p~n", [Socket, Payload]),
       gen_tcp:send(Socket, Payload),
-      listen_loop(Socket, HandlerFn, State)
+      listen_loop(Socket, HandlerFn, State);
+
+    What ->
+      io:format("tcp::unknown message ~p~n", [What])
   end.
 
 %%%------------------------------------------------------------------------

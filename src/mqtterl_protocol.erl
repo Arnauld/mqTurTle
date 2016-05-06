@@ -23,6 +23,9 @@
   tcp_handler_init/0,
   tcp_on_packet/3]).
 
+% exported mainly for testing purpose
+-export([handle_packet/4]).
+
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
@@ -40,11 +43,66 @@ tcp_on_packet(Socket, State, NewPacket) ->
                <<Bytes/binary, NewPacket/binary>>
            end,
   {Type, Message, RemainingBytes} = mqtterl_codec:decode_packet(Packet),
-  NewState = handle_packet(Type, Message, Socket, State),
+  EncodeAndSend = fun(Type, Message) ->
+    Encoded = mqtterl_codec:encode_packet(Type, Message),
+    gen_tcp:send(Socket, Encoded)
+  end,
+  NewState = handle_packet(Type, Message, EncodeAndSend, State),
   NewState#state{remaining_bytes = RemainingBytes}.
 
-handle_packet(?CONNECT, Message#mqtt_connect{client_id = ClientId, clean_session = CleanSession}, Socket, State) ->
-  case validate_connect(Socket, Message, [protocol, reserved_flag, client_identifier]) of
+handle_packet(?CONNECT, Message, Socket, State) ->
+  handle_connect(Message, Socket, State);
+
+handle_packet(?DISCONNECT, _Message, _Socket, State) ->
+  {disconnect, State};
+
+handle_packet(?SUBSCRIBE, #mqtt_subscribe{packet_id = PacketId, topic_filters = TopicFilters}, Send, State) ->
+  Suback = #mqtt_suback{
+    packet_id = PacketId,
+    return_codes = lists:map(fun(_TopicFilter) ->
+      ?QOS0
+    end, TopicFilters)
+  },
+  Send(?SUBACK, Suback),
+  {ok, State};
+
+handle_packet(?PUBLISH, #mqtt_publish{qos = QoS, packet_id = PacketId}, Send, State) ->
+  case QoS of
+    ?QOS0 ->
+% Expected response: None
+      {ok, State};
+
+    ?QOS1 ->
+% Expected response: PUBACK
+      Puback = #mqtt_puback{
+        packet_id = PacketId
+      },
+      Send(?PUBACK, Puback),
+      {ok, State};
+
+    ?QOS2 ->
+% Expected response: PUBREC
+% Expected response: PUBACK
+      Pubrec = #mqtt_pubrec{
+        packet_id = PacketId
+      },
+      Send(?PUBREC, Pubrec),
+      {ok, State}
+  end;
+
+handle_packet(?PUBREL, #mqtt_pubrel{packet_id = PacketId}, Send, State) ->
+  Pubcomp = #mqtt_pubcomp{
+    packet_id = PacketId
+  },
+  Send(?PUBCOMP, Pubcomp),
+  {ok, State}.
+
+%% ------------------------------------------------------------------
+%% CONNECT
+%% ------------------------------------------------------------------
+
+handle_connect(Message = #mqtt_connect{client_id = ClientId, clean_session = CleanSession}, Send, State) ->
+  case validate_connect(Send, Message, [protocol, reserved_flag, client_identifier]) of
     ok ->
       {Session, WasPresent} = case CleanSession of
                                 0 ->
@@ -57,89 +115,54 @@ handle_packet(?CONNECT, Message#mqtt_connect{client_id = ClientId, clean_session
         session_present = WasPresent,
         return_code = ?CONNACK_ACCEPT
       },
-      gen_tcp:send(Socket, mqtterl_codec:encode_connack(Connack)),
+      Send(?CONNACK, Connack),
       {ok, State};
 
-    _ ->
+    {invalid, Reason} ->
       {disconnect, State}
-  end;
+  end.
 
+validate_connect(_Send, _Message, []) ->
+  ok;
 
-
-handle_packet(?DISCONNECT, _Message, _Socket, State) ->
-  {disconnect, State};
-
-handle_packet(?SUBSCRIBE, #mqtt_subscribe{packet_id = PacketId, topic_filters = TopicFilters}, Socket, State) ->
-  Suback = #mqtt_suback{
-    packet_id = PacketId,
-    return_codes = lists:map(fun(_TopicFilter) ->
-      ?QOS0
-    end, TopicFilters)
-  },
-  gen_tcp:send(Socket, mqtterl_codec:encode_suback(Suback)),
-  {ok, State};
-
-handle_packet(?PUBLISH, #mqtt_publish{qos = QoS, packet_id = PacketId}, Socket, State) ->
-  case QoS of
-    ?QOS0 ->
-% Expected response: None
-      {ok, State};
-
-    ?QOS1 ->
-% Expected response: PUBACK
-      Puback = #mqtt_puback{
-        packet_id = PacketId
-      },
-      gen_tcp:send(Socket, mqtterl_codec:encode_puback(Puback)),
-      {ok, State};
-
-    ?QOS2 ->
-% Expected response: PUBREC
-% Expected response: PUBACK
-      Puback = #mqtt_pubrec{
-        packet_id = PacketId
-      },
-      gen_tcp:send(Socket, mqtterl_codec:encode_pubrec(Puback)),
-      {ok, State}
-  end;
-
-handle_packet(?PUBREL, #mqtt_pubrel{packet_id = PacketId}, Socket, State) ->
-  Pubcomp = #mqtt_pubcomp{
-    packet_id = PacketId
-  },
-  gen_tcp:send(Socket, mqtterl_codec:encode_pubcomp(Pubcomp)),
-  {ok, State}.
-
-
-validate_connect_protocol(Socket, #mqtt_connect{protocol_level = ProtocolLevel, protocol_name = ProtocolName}) ->
+validate_connect(Send, Message = #mqtt_connect{protocol_level = ProtocolLevel, protocol_name = ProtocolName}, [protocol | Rest]) ->
   case {ProtocolLevel, ProtocolName} of
     {4, <<"MQTT">>} ->
-      true;
+      validate_connect(Send, Message, Rest);
 
     {_, <<"MQTT">>} ->
       Connack = #mqtt_connack{
         session_present = false,
         return_code = ?CONNACK_PROTO_VER
       },
-      gen_tcp:send(Socket, mqtterl_codec:encode_connack(Connack)),
-      false;
+      Send(?CONNACK, Connack),
+      {invalid, protocol_version};
 
     _ ->
-      false
+      {invalid, protocol_name}
 
+  end;
+
+validate_connect(Send, Message = #mqtt_connect{reserved_flag = IsReserved}, [reserved_flag | Rest]) ->
+  case IsReserved of
+    0 ->
+      validate_connect(Send, Message, Rest);
+    _ ->
+      {invalid, reserved_flag}
+  end;
+
+validate_connect(Send, Message = #mqtt_connect{client_id = ClientId}, [client_identifier | Rest]) ->
+  case size(ClientId) of
+    L when 1 =< L andalso L =< 23 ->
+      case re:run(ClientId, "[0-9a-zA-Z]+") of
+        nomatch ->
+          {invalid, client_id_chars};
+        {match, _} ->
+          validate_connect(Send, Message, Rest)
+      end;
+    _ ->
+      {invalid, client_id_size}
   end.
-
-validate_connect_reserved(Socket, #mqtt_connect{reserved_flag = IsReserved}) ->
-  IsReserved == 0.
-
-validate_connect_client_identifier(Socket, #mqtt_connect{client_id = ClientId}) ->
-  Size = size(ClientId),
-  1 =< Size
-    andalso Size =< 23
-    andalso case re:run(ClientId, "[0-9a-zA-Z]+") of
-              nomatch -> false;
-              {match, _} -> true
-            end.
 
 
 

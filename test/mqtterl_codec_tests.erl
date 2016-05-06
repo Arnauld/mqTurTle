@@ -64,7 +64,7 @@ should_parse_connect_packet__step_by_step__test() ->
   ?assertEqual(0, Header#mqtt_connect.will_qos),
   ?assertEqual(false, Header#mqtt_connect.will_retain),
   ?assertEqual(false, Header#mqtt_connect.will_flag),
-  ?assertEqual(true, Header#mqtt_connect.clean_session),
+  ?assertEqual(1, Header#mqtt_connect.clean_session),
   ?assertEqual(0, Header#mqtt_connect.keep_alive),
 
   {Payload, Remaining4} = mqtterl_codec:decode_connect_payload(Header, Remaining3),
@@ -96,7 +96,7 @@ should_parse_connect_packet__test() ->
   ?assertEqual(0, Message#mqtt_connect.will_qos),
   ?assertEqual(false, Message#mqtt_connect.will_retain),
   ?assertEqual(false, Message#mqtt_connect.will_flag),
-  ?assertEqual(true, Message#mqtt_connect.clean_session),
+  ?assertEqual(1, Message#mqtt_connect.clean_session),
   ?assertEqual(0, Message#mqtt_connect.keep_alive),
   ?assertEqual(<<"myclientid">>, Message#mqtt_connect.client_id),
   ?assertEqual(undefined, Message#mqtt_connect.username),

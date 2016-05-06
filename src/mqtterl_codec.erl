@@ -21,8 +21,9 @@
 -export([decode_packet/1]).
 -export([decode_packet_type/1]).
 -export([decode_remaining_length/1, encode_remaining_length/1]).
-
 -export([decode_connect_variable_header/1, decode_connect_payload/2]).
+
+-export([encode_packet/2]).
 -export([encode_connack/1]).
 -export([encode_suback/1]).
 -export([encode_puback/1]).
@@ -151,6 +152,12 @@ decode_packet(?PUBREL, Flags, Binaries) ->
   #mqtt_pubrel{
     packet_id = PacketId
   }.
+
+encode_packet(?CONNACK, Message) -> encode_connack(Message);
+encode_packet(?SUBACK, Message) -> encode_suback(Message);
+encode_packet(?PUBACK, Message) -> encode_puback(Message);
+encode_packet(?PUBREC, Message) -> encode_pubrec(Message);
+encode_packet(?PUBCOMP, Message) -> encode_pubcomp(Message).
 
 %% ------------------------------------------------------------------
 %% CONNECT

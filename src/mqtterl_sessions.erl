@@ -6,12 +6,13 @@
 %%% @end
 %%% Created : 03. mai 2016 23:01
 %%%-------------------------------------------------------------------
--module(mqtterl_broker).
+-module(mqtterl_sessions).
 -author("Arnauld").
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, stop/0]).
+-export([get_or_create/2, create/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -23,11 +24,17 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {}).
+-record(state, {sessions}).
+-record(session, {id}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+get_or_create(ClientId, Opts) ->
+  gen_server:call(?SERVER, {get_or_create, ClientId, Opts}).
+
+create(ClientId, Opts) ->
+  gen_server:call(?SERVER, {create, ClientId, Opts}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -38,6 +45,17 @@
 %%--------------------------------------------------------------------
 start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Stop the server
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(stop() -> ok).
+stop() ->
+  gen_server:stop(?SERVER).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -55,7 +73,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-  {ok, #state{}}.
+  {ok, #state{
+    sessions = dict:new()
+  }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -71,6 +91,31 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%---------------------------------------------------------------------
+handle_call({get_or_create, ClientId, Opts}, _From, State = #state{sessions = Sessions}) ->
+  {NewSession, WasPresent, NewState} =
+    case dict:find(ClientId, Sessions) of
+      {ok, Session} ->
+        {Session, true, State};
+
+      error ->
+        Session = #session{id=mqtterl_util:random_uuid()},
+        NS = dict:store(ClientId, Session, Sessions),
+        {Session, false, State#state{sessions = NS}}
+    end,
+  {reply, {NewSession, WasPresent}, NewState};
+
+handle_call({create, ClientId, Opts}, _From, State = #state{sessions = Sessions}) ->
+  WasPresent = case dict:find(ClientId, Sessions) of
+                 {ok, _} ->
+                   true;
+                 error ->
+                   false
+               end,
+  Session = #session{id=mqtterl_util:random_uuid()},
+  NS = dict:store(ClientId, Session, Sessions),
+  NewState = State#state{sessions = NS},
+  {reply, {Session, WasPresent}, NewState};
+
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
