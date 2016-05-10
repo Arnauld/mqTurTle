@@ -24,7 +24,7 @@
   tcp_on_packet/3]).
 
 % exported mainly for testing purpose
--export([handle_packet/4]).
+-export([handle_packet/4, validate_connect/3]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -50,13 +50,13 @@ tcp_on_packet(Socket, State, NewPacket) ->
   NewState = handle_packet(Type, Message, EncodeAndSend, State),
   NewState#state{remaining_bytes = RemainingBytes}.
 
-handle_packet(?CONNECT, Message, Socket, State) ->
-  handle_connect(Message, Socket, State);
+handle_packet(?CONNECT, Message, Send, State) when is_function(Send, 2) ->
+  handle_connect(Message, Send, State);
 
-handle_packet(?DISCONNECT, _Message, _Socket, State) ->
+handle_packet(?DISCONNECT, _Message, _Send, State) ->
   {disconnect, State};
 
-handle_packet(?SUBSCRIBE, #mqtt_subscribe{packet_id = PacketId, topic_filters = TopicFilters}, Send, State) ->
+handle_packet(?SUBSCRIBE, #mqtt_subscribe{packet_id = PacketId, topic_filters = TopicFilters}, Send, State) when is_function(Send, 2) ->
   Suback = #mqtt_suback{
     packet_id = PacketId,
     return_codes = lists:map(fun(_TopicFilter) ->
@@ -66,7 +66,7 @@ handle_packet(?SUBSCRIBE, #mqtt_subscribe{packet_id = PacketId, topic_filters = 
   Send(?SUBACK, Suback),
   {ok, State};
 
-handle_packet(?PUBLISH, #mqtt_publish{qos = QoS, packet_id = PacketId}, Send, State) ->
+handle_packet(?PUBLISH, #mqtt_publish{qos = QoS, packet_id = PacketId}, Send, State) when is_function(Send, 2) ->
   case QoS of
     ?QOS0 ->
 % Expected response: None
@@ -90,7 +90,7 @@ handle_packet(?PUBLISH, #mqtt_publish{qos = QoS, packet_id = PacketId}, Send, St
       {ok, State}
   end;
 
-handle_packet(?PUBREL, #mqtt_pubrel{packet_id = PacketId}, Send, State) ->
+handle_packet(?PUBREL, #mqtt_pubrel{packet_id = PacketId}, Send, State) when is_function(Send, 2) ->
   Pubcomp = #mqtt_pubcomp{
     packet_id = PacketId
   },
@@ -101,8 +101,11 @@ handle_packet(?PUBREL, #mqtt_pubrel{packet_id = PacketId}, Send, State) ->
 %% CONNECT
 %% ------------------------------------------------------------------
 
-handle_connect(Message = #mqtt_connect{client_id = ClientId, clean_session = CleanSession}, Send, State) ->
-  case validate_connect(Send, Message, [protocol, reserved_flag, client_identifier]) of
+handle_connect(Message, Send, State) ->
+  #mqtt_connect{client_id = ClientId, clean_session = CleanSession} = Message,
+
+  Validations = [protocol, reserved_flag, client_identifier],
+  case validate_connect(Send, Message, Validations) of
     ok ->
       {Session, WasPresent} = case CleanSession of
                                 0 ->
@@ -122,10 +125,11 @@ handle_connect(Message = #mqtt_connect{client_id = ClientId, clean_session = Cle
       {disconnect, State}
   end.
 
-validate_connect(_Send, _Message, []) ->
+validate_connect(Send, _Message, []) when is_function(Send, 2) ->
   ok;
 
-validate_connect(Send, Message = #mqtt_connect{protocol_level = ProtocolLevel, protocol_name = ProtocolName}, [protocol | Rest]) ->
+validate_connect(Send, Message, [protocol | Rest]) when is_function(Send, 2) ->
+  #mqtt_connect{protocol_level = ProtocolLevel, protocol_name = ProtocolName} = Message,
   case {ProtocolLevel, ProtocolName} of
     {4, <<"MQTT">>} ->
       validate_connect(Send, Message, Rest);
@@ -143,7 +147,8 @@ validate_connect(Send, Message = #mqtt_connect{protocol_level = ProtocolLevel, p
 
   end;
 
-validate_connect(Send, Message = #mqtt_connect{reserved_flag = IsReserved}, [reserved_flag | Rest]) ->
+validate_connect(Send, Message, [reserved_flag | Rest]) when is_function(Send, 2) ->
+  #mqtt_connect{reserved_flag = IsReserved} = Message,
   case IsReserved of
     0 ->
       validate_connect(Send, Message, Rest);
@@ -151,14 +156,21 @@ validate_connect(Send, Message = #mqtt_connect{reserved_flag = IsReserved}, [res
       {invalid, reserved_flag}
   end;
 
-validate_connect(Send, Message = #mqtt_connect{client_id = ClientId}, [client_identifier | Rest]) ->
+validate_connect(Send, Message, [client_identifier | Rest]) when is_function(Send, 2) ->
+  #mqtt_connect{client_id = ClientId} = Message,
+  Sz = size(ClientId),
   case size(ClientId) of
     L when 1 =< L andalso L =< 23 ->
       case re:run(ClientId, "[0-9a-zA-Z]+") of
-        nomatch ->
+        {match, [{0, Sz}]} ->
+          validate_connect(Send, Message, Rest);
+
+
+        {match, _} -> % Partial match...
           {invalid, client_id_chars};
-        {match, _} ->
-          validate_connect(Send, Message, Rest)
+
+        nomatch ->
+          {invalid, client_id_chars}
       end;
     _ ->
       {invalid, client_id_size}
