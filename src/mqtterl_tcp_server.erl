@@ -27,19 +27,26 @@
 %% @doc
 %% Starts the server
 %%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @spec start_link() -> {ok, ListenSocket} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
 start_link(Port, Handler = {InitFn, HandlerFn}) when is_integer(Port), is_function(InitFn, 0), is_function(HandlerFn, 3) ->
   Opts = [binary, {active, false}, {keepalive, true}, {backlog, 30}],
   case gen_tcp:listen(Port, Opts) of
     {ok, ListenSocket} ->
+      {ok, PortUsed} = case Port of
+                         0 ->
+                           inet:port(ListenSocket);
+                         _ ->
+                           {ok, Port}
+                       end,
       State = #state{listener = ListenSocket, handler = Handler},
       Pid = spawn_link(fun() ->
-        io:format("Ready to accept connection on port ~p~n", [Port]),
+        io:format("Ready to accept connection on port ~p~n", [PortUsed]),
         accept(State)
       end),
-      {ok, Pid};
+      register(?SERVER, Pid),
+      {ok, ListenSocket, PortUsed};
 
     {error, Reason} ->
       {stop, Reason}

@@ -12,10 +12,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 should_connect_to_tcp_server_that_echo_back__test() ->
-  Port = 10123,
   Self = self(),
   try
-    Ref = mqtterl_tcp_server:start_link(Port, {
+    {ok, ListenSocket, Port} = mqtterl_tcp_server:start_link(0, {
       fun() ->
         io:format("handlerFn:Init~n"),
         state
@@ -28,7 +27,7 @@ should_connect_to_tcp_server_that_echo_back__test() ->
       end
     }),
 
-    {ok, S} = gen_tcp:connect({127, 0, 0, 1}, Port, [{packet, 2}]),
+    {ok, S} = wait_for_connect(10, Port, none),
 
     Payload = <<"hello">>,
     Len = size(Payload),
@@ -40,6 +39,20 @@ should_connect_to_tcp_server_that_echo_back__test() ->
       Data ->
         ?assertEqual(Data, <<Len:16/big-unsigned-integer, Payload/binary>>)
     end
+%    gen_tcp:close(S),
+%    gen_tcp:close(ListenSocket)
   after
     mqtterl_tcp_server:stop()
+  end.
+
+wait_for_connect(0, _, LastError) ->
+  LastError;
+wait_for_connect(N, Port, _) ->
+  case gen_tcp:connect({127, 0, 0, 1}, Port, [{packet, 2}]) of
+    {ok, S} ->
+      {ok, S};
+    {error, Reason} ->
+      io:format("Retry connect, got ~p~n", [Reason]),
+      timer:sleep(200),
+      wait_for_connect(N - 1, Port, {error, Reason})
   end.
