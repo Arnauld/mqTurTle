@@ -19,7 +19,7 @@ should_connect_to_tcp_server_that_echo_back__test() ->
         io:format("handlerFn:Init~n"),
         state
       end,
-      fun(_Socket, state, NewData) ->
+      fun(state, NewData, _Send) ->
         <<RLen:16/big-unsigned-integer, RData:RLen/binary>> = NewData,
         io:format("Data received: ~p (size ~p)~n", [RData, RLen]),
         Self ! RData,

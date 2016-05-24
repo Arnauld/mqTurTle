@@ -35,7 +35,7 @@ tcp_handler() ->
 tcp_handler_init() ->
   #state{}.
 
-tcp_on_packet(Socket, State, NewPacket) ->
+tcp_on_packet(State, NewPacket, Send) ->
   Packet = case State#state.remaining_bytes of
              <<>> ->
                NewPacket;
@@ -45,16 +45,21 @@ tcp_on_packet(Socket, State, NewPacket) ->
   {Type, Message, RemainingBytes} = mqtterl_codec:decode_packet(Packet),
   EncodeAndSend = fun(ResponseType, Msg) ->
     Encoded = mqtterl_codec:encode_packet(ResponseType, Msg),
-    gen_tcp:send(Socket, Encoded)
+    Send(Encoded)
   end,
-  NewState = handle_packet(Type, Message, EncodeAndSend, State),
-  NewState#state{remaining_bytes = RemainingBytes}.
+
+  case handle_packet(Type, Message, EncodeAndSend, State) of
+    {ok, NewState} ->
+      {ok, NewState#state{remaining_bytes = RemainingBytes}};
+    Other ->
+      Other
+  end.
 
 handle_packet(?CONNECT, Message, Send, State) when is_function(Send, 2) ->
   handle_connect(Message, Send, State);
 
 handle_packet(?DISCONNECT, _Message, _Send, State) ->
-  {disconnect, State};
+  {disconnect, normal, State};
 
 handle_packet(?SUBSCRIBE, #mqtt_subscribe{packet_id = PacketId, topic_filters = TopicFilters}, Send, State) when is_function(Send, 2) ->
   Suback = #mqtt_suback{
@@ -123,8 +128,8 @@ handle_connect(Message, Send, State) ->
       NewState = State#state{session = Session},
       {ok, NewState};
 
-    {invalid, _Reason} ->
-      {disconnect, State}
+    {invalid, Reason} ->
+      {disconnect, Reason, State}
   end.
 
 validate_connect(Send, _Message, []) when is_function(Send, 2) ->
@@ -163,16 +168,16 @@ validate_connect(Send, Message, [client_identifier | Rest]) when is_function(Sen
   Sz = size(ClientId),
   case size(ClientId) of
     L when 1 =< L andalso L =< 23 ->
-      case re:run(ClientId, "[0-9a-zA-Z]+") of
+      case re:run(ClientId, "[0-9a-zA-Z ]+") of
         {match, [{0, Sz}]} ->
           validate_connect(Send, Message, Rest);
 
 
         {match, _} -> % Partial match...
-          {invalid, client_id_chars};
+          {invalid, {client_id_chars_partial_match, binary_to_list(ClientId)}};
 
         nomatch ->
-          {invalid, client_id_chars}
+          {invalid, {client_id_chars_no_match, binary_to_list(ClientId)}}
       end;
     _ ->
       {invalid, client_id_size}

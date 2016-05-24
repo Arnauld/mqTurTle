@@ -97,12 +97,14 @@ listen_loop(Socket, HandlerFn, State) ->
   receive
     {tcp, Socket, NewData} ->
       io:format("tcp::Got packet: ~p~n", [NewData]),
-      case HandlerFn(Socket, State, NewData) of
+      case HandlerFn(State, NewData, send_fn(Socket)) of
         {ok, NewState} ->
+          io:format("tcp::prepare to handle next packet: ~p~n", [NewState]),
           ready_to_receive_tcp_data(Socket),
           listen_loop(Socket, HandlerFn, NewState);
 
-        {disconnect, _} ->
+        {disconnect, Reason, _State} ->
+          io:format("tcp::disconnecting: ~p~n", [Reason]),
           gen_tcp:close(Socket);
 
         What ->
@@ -123,6 +125,12 @@ listen_loop(Socket, HandlerFn, State) ->
 
     What ->
       io:format("tcp::unknown message ~p~n", [What])
+  end.
+
+send_fn(Socket) ->
+  fun(Data) ->
+    io:format("tcp::sending message ~p~n", [Data]),
+    gen_tcp:send(Socket, Data)
   end.
 
 %%%------------------------------------------------------------------------
