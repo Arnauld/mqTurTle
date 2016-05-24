@@ -10,6 +10,8 @@
 -author("Arnauld").
 -behaviour(gen_server).
 
+-include("mqtterl_core.hrl").
+
 %% API
 -export([start_link/0, stop/0]).
 -export([get_or_create/2, create/2]).
@@ -25,7 +27,6 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {sessions}).
--record(session, {id}).
 
 %%%===================================================================
 %%% API
@@ -98,7 +99,7 @@ handle_call({get_or_create, ClientId, Opts}, _From, State = #state{sessions = Se
         {Session, true, State};
 
       error ->
-        Session = #session{id=mqtterl_util:random_uuid()},
+        Session = #session{id = mqtterl_util:random_uuid()},
         NS = dict:store(ClientId, Session, Sessions),
         {Session, false, State#state{sessions = NS}}
     end,
@@ -111,7 +112,7 @@ handle_call({create, ClientId, Opts}, _From, State = #state{sessions = Sessions}
                  error ->
                    false
                end,
-  Session = #session{id=mqtterl_util:random_uuid()},
+  Session = #session{id = mqtterl_util:random_uuid()},
   NS = dict:store(ClientId, Session, Sessions),
   NewState = State#state{sessions = NS},
   {reply, {Session, WasPresent}, NewState};
