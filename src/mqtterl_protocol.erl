@@ -43,8 +43,8 @@ tcp_on_packet(Socket, State, NewPacket) ->
                <<Bytes/binary, NewPacket/binary>>
            end,
   {Type, Message, RemainingBytes} = mqtterl_codec:decode_packet(Packet),
-  EncodeAndSend = fun(Type, Message) ->
-    Encoded = mqtterl_codec:encode_packet(Type, Message),
+  EncodeAndSend = fun(ResponseType, Msg) ->
+    Encoded = mqtterl_codec:encode_packet(ResponseType, Msg),
     gen_tcp:send(Socket, Encoded)
   end,
   NewState = handle_packet(Type, Message, EncodeAndSend, State),
@@ -119,9 +119,11 @@ handle_connect(Message, Send, State) ->
         return_code = ?CONNACK_ACCEPT
       },
       Send(?CONNACK, Connack),
-      {ok, State};
 
-    {invalid, Reason} ->
+      NewState = State#state{session = Session},
+      {ok, NewState};
+
+    {invalid, _Reason} ->
       {disconnect, State}
   end.
 

@@ -9,4 +9,4 @@
 -author("Arnauld").
 
 
--record(session, {id}).
+-record(session, {id :: binary(), opts :: map()}).

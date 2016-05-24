@@ -99,7 +99,7 @@ handle_call({get_or_create, ClientId, Opts}, _From, State = #state{sessions = Se
         {Session, true, State};
 
       error ->
-        Session = #session{id = mqtterl_util:random_uuid()},
+        Session = new_session(Opts),
         NS = dict:store(ClientId, Session, Sessions),
         {Session, false, State#state{sessions = NS}}
     end,
@@ -112,7 +112,7 @@ handle_call({create, ClientId, Opts}, _From, State = #state{sessions = Sessions}
                  error ->
                    false
                end,
-  Session = #session{id = mqtterl_util:random_uuid()},
+  Session = new_session(Opts),
   NS = dict:store(ClientId, Session, Sessions),
   NewState = State#state{sessions = NS},
   {reply, {Session, WasPresent}, NewState};
@@ -174,3 +174,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+new_session(Opts) ->
+  #session{id = mqtterl_util:random_uuid(), opts = Opts}.
