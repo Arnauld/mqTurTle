@@ -35,3 +35,12 @@ Note `rebar.config`
 
 {eunit_opts, [verbose]}.
 ```
+
+Resources
+=========
+
+* http://www.hivemq.com/blog/mqtt-essentials-part-3-client-broker-connection-establishment
+* http://vasters.com/clemensv/2014/06/02/MQTT+An+Implementers+Perspective.aspx
+* https://www.genuitec.com/introduction-to-mqtt-protocol/
+* https://wiki.eclipse.org/Interop_Testing_Plan#Test_Broker
+* http://emauton.org/disterl/
