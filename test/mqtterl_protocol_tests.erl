@@ -19,11 +19,11 @@ should_validate_connect_client_identifier__test() ->
     mqtterl_protocol:validate_connect(SendFn, M, [client_identifier])
   end,
   %
-  ?assertEqual({invalid, client_id_chars}, ValidateFn(<<"aze er">>)),
-  ?assertEqual({invalid, client_id_chars}, ValidateFn(<<"aze-er">>)),
-  ?assertEqual({invalid, client_id_chars}, ValidateFn(<<"aze_er">>)),
-  ?assertEqual({invalid, client_id_chars}, ValidateFn(<<"______">>)),
-  ?assertEqual({invalid, client_id_size}, ValidateFn(<<"">>)),
-  ?assertEqual({invalid, client_id_size}, ValidateFn(<<"123456789012345678901234">>)),
+  {invalid, {client_id_chars_partial_match, _}} = ValidateFn(<<"aze.er">>),
+  {invalid, {client_id_chars_partial_match, _}} = ValidateFn(<<"aze-er">>),
+  {invalid, {client_id_chars_partial_match, _}} = ValidateFn(<<"aze_er">>),
+  {invalid, {client_id_chars_no_match, _}} = ValidateFn(<<"______">>),
+  {invalid, client_id_size} = ValidateFn(<<"">>),
+  {invalid, client_id_size} = ValidateFn(<<"123456789012345678901234">>),
   ?assertEqual(ok, ValidateFn(<<"012344">>)),
   ?assertEqual(ok, ValidateFn(<<"12345678901234567890123">>)).
