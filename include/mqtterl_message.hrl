@@ -29,15 +29,15 @@
 -record(mqtt_connect, {
   % HEADER
   protocol_name :: binary(),
-  protocol_level :: pos_integer(),
+  protocol_level :: non_neg_integer(),
   has_username :: boolean(),
   has_password :: boolean(),
   will_retain :: boolean(),
   will_qos :: integer(),
   will_flag :: boolean(),
-  clean_session :: pos_integer(),
-  keep_alive :: pos_integer(),
-  reserved_flag :: pos_integer(),
+  clean_session :: 0|1,
+  keep_alive :: 0|1,
+  reserved_flag :: 0|1,
   % PAYLOAD
   client_id = undefined :: binary() | undefined,
   username = undefined :: binary() | undefined,
@@ -62,7 +62,7 @@
 -record(mqtt_disconnect, {}).
 
 -record(mqtt_subscribe, {
-  packet_id :: binary(),
+  packet_id :: integer(),
   topic_filters = [] :: [binary()]
 }).
 
@@ -77,7 +77,7 @@
 
 -record(mqtt_suback, {
   packet_id :: integer(),
-  return_codes :: mqtt_qos() | ?SUBACK_FAILURE
+  return_codes :: [mqtt_qos() | ?SUBACK_FAILURE]
 }).
 
 -record(mqtt_publish, {

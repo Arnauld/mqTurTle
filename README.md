@@ -16,7 +16,7 @@ Build
     $ rebar3 eunit
     
     $ # dialyzer / code analyzer
-    $ rebar3 dializer
+    $ rebar3 dialyzer
     
     $ # code coverage (see note)
     $ rebar3 cover
