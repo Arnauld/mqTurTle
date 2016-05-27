@@ -9,7 +9,6 @@
 -module(mqtterl_sessions_tests).
 -author("Arnauld").
 
--include("mqtterl_core.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 should_create_a_new_session_when_does_not_yet_exists__test() ->
