@@ -21,11 +21,11 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
--spec(match(Topic :: binary(), Filter :: binary()) -> match | no_match | invalid_topic).
-match(Topic, Filter) when is_binary(Filter), is_binary(Topic) ->
+-spec(match(Filter :: binary(), Topic :: binary()) -> match | no_match | invalid_topic).
+match(Filter, Topic) when is_binary(Filter), is_binary(Topic) ->
   CompiledTopic = compile_terms(Topic),
   CompiledFilter = compile_terms(Filter),
-  match_terms(CompiledTopic, CompiledFilter).
+  match_terms(CompiledFilter, CompiledTopic).
 
 
 compile_terms(Terms) when is_binary(Terms) ->
@@ -35,7 +35,7 @@ match_terms([], []) ->
   true;
 match_terms([H | TopicTail], [H | FilterTail]) ->
   match_terms(TopicTail, FilterTail);
-match_terms(_, [<<"#">> | _]) ->
+match_terms([<<"#">> | _], _) ->
   true;
 match_terms(_, _) ->
   false.
