@@ -32,13 +32,13 @@ compile_terms(Terms) when is_binary(Terms) ->
   binary:split(Terms, <<"/">>, [global]).
 
 match_terms([], []) ->
-  true;
+  match;
 match_terms([H | FilterTail], [H | TopicTail]) ->
   match_terms(FilterTail, TopicTail);
 match_terms([<<"#">>], _) -> % wildcard must be the last char of the topic to be valid
-  true;
+  match;
 match_terms([<<"+">> | FilterTail], [_ | TopicTail]) ->
   match_terms(FilterTail, TopicTail);
 match_terms(_, _) ->
-  false.
+  no_match.
 
