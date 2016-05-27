@@ -38,3 +38,7 @@ should_support_single_level_wildcard_on_direct_parent__test() ->
 
 should_not_support_single_level_wildcard_on_two_level_parents__test() ->
   ?assertEqual(false, mqtterl_topic:match(<<"sport/tennis/+">>, <<"sport/tennis/player1/ranking">>)).
+
+should_support_single_level_wildcard_on_a_single_level_parent_not_empty_one__test() ->
+  ?assertEqual(true, mqtterl_topic:match(<<"sport/+">>, <<"sport/">>)),
+  ?assertEqual(false, mqtterl_topic:match(<<"sport/+">>, <<"sport">>)).
