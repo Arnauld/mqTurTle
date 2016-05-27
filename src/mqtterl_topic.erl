@@ -29,12 +29,14 @@ match(Topic, Filter) when is_binary(Filter), is_binary(Topic) ->
 
 
 compile_terms(Terms) when is_binary(Terms) ->
-  [Terms].
+  binary:split(Terms, <<"/">>, [global]).
 
 match_terms([], []) ->
   true;
 match_terms([H | TopicTail], [H | FilterTail]) ->
   match_terms(TopicTail, FilterTail);
+match_terms(_, [<<"#">> | _]) ->
+  true;
 match_terms(_, _) ->
   false.
 
