@@ -45,4 +45,9 @@ should_support_single_level_wildcard_on_a_single_level_parent_not_empty_one__tes
 
 should_support_single_level_wildcard__non_normative_comments__test() ->
   ?assertEqual(true, mqtterl_topic:match(<<"+/+">>, <<"/finance">>)),
-  ?assertEqual(true, mqtterl_topic:match(<<"/+">>, <<"/finance">>)).
+  ?assertEqual(true, mqtterl_topic:match(<<"/+">>, <<"/finance">>)),
+  ?assertEqual(true, mqtterl_topic:match(<<"+">>, <<"finance">>)).
+
+should_support_mix_cases__test() ->
+  ?assertEqual(true, mqtterl_topic:match(<<"+/tennis/#">>, <<"sport/tennis/player1">>)),
+  ?assertEqual(true, mqtterl_topic:match(<<"+/tennis/+/score/#">>, <<"sport/tennis/player1/score/wimbledon/set2">>)).
