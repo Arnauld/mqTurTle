@@ -35,7 +35,7 @@ match_terms([], []) ->
   true;
 match_terms([H | TopicTail], [H | FilterTail]) ->
   match_terms(TopicTail, FilterTail);
-match_terms([<<"#">> | _], _) ->
+match_terms([<<"#">>], _) -> % wildcard must be the last char of the topic to be valid
   true;
 match_terms(_, _) ->
   false.
