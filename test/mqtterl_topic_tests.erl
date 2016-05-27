@@ -20,6 +20,9 @@ should_match_direct_topic_even_with_separator__test() ->
 should_support_multi_level_wildcard_on_empty_parent__test() ->
   ?assertEqual(true, mqtterl_topic:match(<<"sport/tennis/player1/#">>, <<"sport/tennis/player1">>)).
 
+should_not_support_multi_level_wildcard_on_different_ancestor__test() ->
+  ?assertEqual(false, mqtterl_topic:match(<<"sport/tennis/player1/#">>, <<"sport/tennis/player2">>)).
+
 should_support_multi_level_wildcard_with_direct_parent__test() ->
   ?assertEqual(true, mqtterl_topic:match(<<"sport/tennis/player1/#">>, <<"sport/tennis/player1/ranking">>)).
 
@@ -29,6 +32,9 @@ should_support_multi_level_wildcard_with_multiple_parents__test() ->
 should_support_multi_level_wildcard_alone__test() ->
   ?assertEqual(true, mqtterl_topic:match(<<"#">>, <<"sport/tennis/player1/score/wimbledon">>)).
 
-should_support_single_level_wildcard_on_empty_parent__test() ->
+should_support_single_level_wildcard_on_direct_parent__test() ->
   ?assertEqual(true, mqtterl_topic:match(<<"sport/tennis/+">>, <<"sport/tennis/player1">>)),
   ?assertEqual(true, mqtterl_topic:match(<<"sport/tennis/+">>, <<"sport/tennis/player2">>)).
+
+should_not_support_single_level_wildcard_on_two_level_parents__test() ->
+  ?assertEqual(false, mqtterl_topic:match(<<"sport/tennis/+">>, <<"sport/tennis/player1/ranking">>)).
