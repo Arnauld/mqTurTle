@@ -10,7 +10,6 @@
 -author("Arnauld").
 
 -record(compiled_terms, {tokens = []}).
--type compiled_terms() :: [term()].
 
 %% ------------------------------------------------------------------
 %% API Function Exports

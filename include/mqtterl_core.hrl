@@ -8,5 +8,9 @@
 %%%-------------------------------------------------------------------
 -author("Arnauld").
 
+-type topic_filter() :: binary().
 
--record(session, {id :: binary(), opts :: map()}).
+-record(session, {
+  id :: binary(),
+  opts :: map(),
+  subscriptions = [] :: [topic_filter()]}).

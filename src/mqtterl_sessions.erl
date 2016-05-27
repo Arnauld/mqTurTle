@@ -10,11 +10,11 @@
 -author("Arnauld").
 -behaviour(gen_server).
 
--include("mqtterl_core.hrl").
 
 %% API
 -export([start_link/0, stop/0]).
 -export([get_or_create/2, create/2]).
+-export([sessions_interested_by/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -22,7 +22,8 @@
   handle_cast/2,
   handle_info/2,
   terminate/2,
-  code_change/3]).
+  code_change/3,
+  format_status/2]).
 
 -define(SERVER, ?MODULE).
 
@@ -36,6 +37,9 @@ get_or_create(ClientId, Opts) ->
 
 create(ClientId, Opts) ->
   gen_server:call(?SERVER, {create, ClientId, Opts}).
+
+sessions_interested_by(Topic) ->
+  gen_server:call(?SERVER, {sessions_interested_by, Topic}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -99,7 +103,7 @@ handle_call({get_or_create, ClientId, Opts}, _From, State = #state{sessions = Se
         {Session, true, State};
 
       error ->
-        Session = new_session(Opts),
+        Session = mqtterl_session:new(Opts),
         NS = dict:store(ClientId, Session, Sessions),
         {Session, false, State#state{sessions = NS}}
     end,
@@ -112,10 +116,14 @@ handle_call({create, ClientId, Opts}, _From, State = #state{sessions = Sessions}
                  error ->
                    false
                end,
-  Session = new_session(Opts),
+  Session = mqtterl_session:new(Opts),
   NS = dict:store(ClientId, Session, Sessions),
   NewState = State#state{sessions = NS},
   {reply, {Session, WasPresent}, NewState};
+
+handle_call({sessions_interested_by, Topic}, _From, State = #state{sessions = Sessions}) ->
+  Found = lists:filter(fun(Session) -> mqtterl_session:is_interested_by(Session, Topic) end, Sessions),
+  {reply, Found, State};
 
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
@@ -171,9 +179,15 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+format_status(Opt, StatusData) ->
+  io_lib:format("~p", [StatusData]).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-new_session(Opts) ->
-  #session{id = mqtterl_util:random_uuid(), opts = Opts}.

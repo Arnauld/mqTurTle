@@ -40,7 +40,7 @@ should_create_a_new_session__test() ->
     {Session2, WasPresent2} = mqtterl_sessions:create(<<"cli1">>, #{}),
     ?assertEqual(false, WasPresent1),
     ?assertEqual(true, WasPresent2),
-    ?assertNotEqual(Session1#session.id, Session2#session.id)
+    ?assertNotEqual(mqtterl_session:id(Session1), mqtterl_session:id(Session2))
   after
     mqtterl_sessions:stop()
   end.
@@ -52,7 +52,7 @@ should_create_a_new_session_even_it_it_already_exists__test() ->
     {Session2, WasPresent2} = mqtterl_sessions:create(<<"cli1">>, #{}),
     ?assertEqual(false, WasPresent1),
     ?assertEqual(true, WasPresent2),
-    ?assertNotEqual(Session1#session.id, Session2#session.id)
+    ?assertNotEqual(mqtterl_session:id(Session1), mqtterl_session:id(Session2))
   after
     mqtterl_sessions:stop()
   end.
