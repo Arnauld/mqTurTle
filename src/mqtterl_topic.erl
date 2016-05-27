@@ -33,10 +33,12 @@ compile_terms(Terms) when is_binary(Terms) ->
 
 match_terms([], []) ->
   true;
-match_terms([H | TopicTail], [H | FilterTail]) ->
-  match_terms(TopicTail, FilterTail);
+match_terms([H | FilterTail], [H | TopicTail]) ->
+  match_terms(FilterTail, TopicTail);
 match_terms([<<"#">>], _) -> % wildcard must be the last char of the topic to be valid
   true;
+match_terms([<<"+">> | FilterTail], [_ | TopicTail]) ->
+  match_terms(FilterTail, TopicTail);
 match_terms(_, _) ->
   false.
 
