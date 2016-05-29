@@ -14,7 +14,10 @@
 %% API
 -export([start_link/0, stop/0]).
 -export([get_or_create/2, create/2]).
--export([sessions_interested_by/1]).
+-export([
+  add_subscriptions/2,
+  remove_subscriptions/2,
+  sessions_interested_by/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -40,6 +43,12 @@ create(ClientId, Opts) ->
 
 sessions_interested_by(Topic) ->
   gen_server:call(?SERVER, {sessions_interested_by, Topic}).
+
+add_subscriptions(ClientId, TopicFilters) ->
+  gen_server:call(?SERVER, {add_subscriptions, ClientId, TopicFilters}).
+
+remove_subscriptions(ClientId, TopicFilters) ->
+  gen_server:call(?SERVER, {remove_subscriptions, ClientId, TopicFilters}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -121,12 +130,41 @@ handle_call({create, ClientId, Opts}, _From, State = #state{sessions = Sessions}
   NewState = State#state{sessions = NS},
   {reply, {Session, WasPresent}, NewState};
 
-handle_call({sessions_interested_by, Topic}, _From, State = #state{sessions = Sessions}) ->
-  Found = lists:filter(fun(Session) -> mqtterl_session:is_interested_by(Session, Topic) end, Sessions),
+handle_call({sessions_interested_by, Topic}, _From, State) ->
+  Found = lists:filter(fun({_ClientId, Session}) ->
+    mqtterl_session:is_interested_by(Session, Topic)
+  end, list_sessions(State)),
   {reply, Found, State};
+
+handle_call({add_subscriptions, ClientId, TopicFilters}, _From, State = #state{sessions = Sessions}) ->
+  case dict:find(ClientId, Sessions) of
+    {ok, Session} ->
+      NewSession = mqtterl_session:add_subscriptions(Session, TopicFilters),
+      NewSessions = dict:store(ClientId, NewSession, Sessions),
+      NewState = State#state{sessions = NewSessions},
+      {reply, ok, NewState};
+
+    error ->
+      {reply, {error, session_not_found}, State}
+  end;
+
+handle_call({remove_subscriptions, ClientId, TopicFilters}, _From, State = #state{sessions = Sessions}) ->
+  case dict:find(ClientId, Sessions) of
+    {ok, Session} ->
+      NewSession = mqtterl_session:remove_subscriptions(Session, TopicFilters),
+      NewSessions = dict:store(ClientId, NewSession, Sessions),
+      NewState = State#state{sessions = NewSessions},
+      {reply, ok, NewState};
+
+    error ->
+      {reply, {error, session_not_found}, State}
+  end;
 
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
+
+list_sessions(#state{sessions = Sessions}) ->
+  dict:to_list(Sessions).
 
 %%--------------------------------------------------------------------
 %% @private

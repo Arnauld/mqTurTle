@@ -9,7 +9,13 @@
 -module(mqtterl_session).
 -author("Arnauld").
 
--include("mqtterl_core.hrl").
+
+-type topic_filter() :: binary().
+
+-record(session, {
+  id :: binary(),
+  opts :: map(),
+  subscriptions = [] :: [topic_filter()]}).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -30,17 +36,17 @@
 new(Opts) ->
   #session{id = mqtterl_util:random_uuid(), opts = Opts}.
 
-id(Session) ->
+id(Session) when is_record(Session, session) ->
   Session#session.id.
 
-is_interested_by(Session, Topic) ->
+is_interested_by(Session, Topic) when is_record(Session, session) ->
   has_match(Session#session.subscriptions, Topic).
 
-add_subscriptions(Session, Filters) ->
+add_subscriptions(Session, Filters) when is_record(Session, session) ->
   NewSubscriptions = Session#session.subscriptions ++ Filters,
   Session#session{subscriptions = NewSubscriptions}.
 
-remove_subscriptions(Session, Filters) ->
+remove_subscriptions(Session, Filters) when is_record(Session, session) ->
   NewSubscriptions = Session#session.subscriptions -- Filters,
   Session#session{subscriptions = NewSubscriptions}.
 

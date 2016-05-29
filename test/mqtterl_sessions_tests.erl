@@ -55,3 +55,30 @@ should_create_a_new_session_even_it_it_already_exists__test() ->
   after
     mqtterl_sessions:stop()
   end.
+
+should_register_subscriptions_and_return_those_matching_a_topic__test() ->
+  try
+    mqtterl_sessions:start_link(),
+    ClientId1 = <<"cli1">>,
+    ClientId2 = <<"cli2">>,
+    ClientId3 = <<"cli3">>,
+    mqtterl_sessions:create(ClientId1, #{}),
+    mqtterl_sessions:create(ClientId2, #{}),
+    mqtterl_sessions:create(ClientId3, #{}),
+    mqtterl_sessions:add_subscriptions(ClientId1, [<<"sport/#">>, <<"cooking/lunch/">>]),
+    mqtterl_sessions:add_subscriptions(ClientId2, [<<"sport/tennis">>]),
+    mqtterl_sessions:add_subscriptions(ClientId3, [<<"alert/#">>]),
+    %
+    %
+    Sessions0 = mqtterl_sessions:sessions_interested_by(<<"sport/tennis">>),
+    ?assertEqual([ClientId1, ClientId2], to_id(Sessions0)),
+    %
+    Sessions1 = mqtterl_sessions:sessions_interested_by(<<"alert/crash">>),
+    ?assertEqual([ClientId3], to_id(Sessions1))
+  after
+    mqtterl_sessions:stop()
+  end.
+
+to_id(Sessions) ->
+  Ids = lists:map(fun({Id, _Session}) -> Id end, Sessions),
+  lists:sort(Ids).
