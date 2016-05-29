@@ -14,7 +14,7 @@
 should_create_a_new_session_when_does_not_yet_exists__test() ->
   try
     mqtterl_sessions:start_link(),
-    {Session, WasPresent} = mqtterl_sessions:get_or_create(<<"cli1">>, #{}),
+    {_Session, WasPresent} = mqtterl_sessions:get_or_create(<<"cli1">>, #{}),
     ?assertEqual(false, WasPresent)
   after
     mqtterl_sessions:stop()
