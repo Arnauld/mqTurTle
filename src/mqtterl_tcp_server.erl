@@ -60,6 +60,7 @@ start_link(Port, Handler = {InitFn, HandlerFn}) when is_integer(Port), is_functi
 %%--------------------------------------------------------------------
 -spec(stop() -> ok).
 stop() ->
+  unregister(?SERVER),
   ok.
 
 %%%===================================================================
