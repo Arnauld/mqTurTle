@@ -42,7 +42,7 @@ start_link(Port, Handler = {InitFn, HandlerFn}) when is_integer(Port), is_functi
                        end,
       State = #state{listener = ListenSocket, handler = Handler},
       Pid = spawn_link(fun() ->
-        io:format("Ready to accept connection on port ~p~n", [PortUsed]),
+        error_logger:info_msg("Ready to accept connection on port ~p~n", [PortUsed]),
         accept(State)
       end),
       register(?SERVER, Pid),
@@ -72,7 +72,7 @@ accept(State) ->
   case gen_tcp:accept(ListenSocket) of
     {ok, Socket} ->
       Pid = spawn_link(fun() ->
-        io:format("Connection accepted ~p~n", [Socket]),
+        error_logger:info_msg("Connection accepted ~p~n", [Socket]),
         listen_loop_(Socket, Handler)
       end),
       gen_tcp:controlling_process(Socket, Pid),
@@ -97,40 +97,40 @@ ready_to_receive_tcp_data(Socket) ->
 listen_loop(Socket, HandlerFn, State) ->
   receive
     {tcp, Socket, NewData} ->
-      io:format("tcp::Got packet: ~p~n", [NewData]),
+      error_logger:info_msg("tcp::Got packet: ~p~n", [NewData]),
       case HandlerFn(State, NewData, send_fn(Socket)) of
         {ok, NewState} ->
-          io:format("tcp::prepare to handle next packet: ~p~n", [NewState]),
+          error_logger:info_msg("tcp::prepare to handle next packet: ~p~n", [NewState]),
           ready_to_receive_tcp_data(Socket),
           listen_loop(Socket, HandlerFn, NewState);
 
         {disconnect, Reason, _State} ->
-          io:format("tcp::disconnecting: ~p~n", [Reason]),
+          error_logger:info_msg("tcp::disconnecting: ~p~n", [Reason]),
           gen_tcp:close(Socket);
 
         What ->
-          io:format("tcp::unknown message from handler ~p~n", [What])
+          error_logger:info_msg("tcp::unknown message from handler ~p~n", [What])
       end;
 
     {tcp_closed, Socket} ->
-      io:format("tcp::Socket ~p closed~n", [Socket]);
+      error_logger:info_msg("tcp::Socket ~p closed~n", [Socket]);
 
     {tcp_error, Socket, Reason} ->
-      io:format("tcp::Socket ~p error reason: ~p~n", [Socket, Reason]),
+      error_logger:info_msg("tcp::Socket ~p error reason: ~p~n", [Socket, Reason]),
       gen_tcp:close(Socket);
 
     {send, Payload} ->
-      io:format("tcp::Socket ~p sending message: ~p~n", [Socket, Payload]),
+      error_logger:info_msg("tcp::Socket ~p sending message: ~p~n", [Socket, Payload]),
       gen_tcp:send(Socket, Payload),
       listen_loop(Socket, HandlerFn, State);
 
     What ->
-      io:format("tcp::unknown message ~p~n", [What])
+      error_logger:info_msg("tcp::unknown message ~p~n", [What])
   end.
 
 send_fn(Socket) ->
   fun(Data) ->
-    io:format("tcp::sending message ~p~n", [Data]),
+    error_logger:info_msg("tcp::sending message ~p~n", [Data]),
     gen_tcp:send(Socket, Data)
   end.
 

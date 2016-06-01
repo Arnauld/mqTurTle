@@ -23,12 +23,12 @@
 start(Port) ->
   mqtterl_tcp_server:start_link(Port, {
     fun() ->
-      io:format("handlerFn:Init~n"),
+      error_logger:info_msg("handlerFn:Init~n"),
       state
     end,
     fun(_Socket, state, NewData) ->
       <<RLen:16/big-unsigned-integer, RData:RLen/binary>> = NewData,
-      io:format("Data received: ~p (size ~p)~n", [RData, RLen]),
+      error_logger:info_msg("Data received: ~p (size ~p)~n", [RData, RLen]),
       state
     end
   }).
