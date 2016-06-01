@@ -1,3 +1,5 @@
+# MQTT Compliance...
+
 Terminal 1:
 
     $ rebar3 shell
@@ -22,3 +24,7 @@ Terminal 3:
     $ cd Projects/3rdParties/mqtt/paho.mqtt.testing/interoperability
     $ python3 client_test.py -p 10306
     
+# EUnit
+
+    rebar3 eunit -v -m mqtterl_integration_tests
+
