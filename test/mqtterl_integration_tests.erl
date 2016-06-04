@@ -108,8 +108,10 @@ should_start_a_broker_and_support_subscribe_and_publish_usecase__test() ->
       {ok, ConnectAck2} = gen_tcp:recv(Client2, 0),
       ?assertEqual(<<2:4, 0:4, 2:8, 0:7, 0:1, 0:8>>, list_to_binary(ConnectAck2)),
 
-      %% `Publishes(DUP=False, QoS=0, Retain=False, TopicName='TopicA', Payload=b'qos 0')`
-      Publish = <<48, 13, 0, 6, 84, 111, 112, 105, 99, 65, 113, 111, 115, 32, 48>>,
+      %% `Publishes(DUP=False, QoS=1, Retain=False, TopicName='TopicA', Payload=b'qos 0')`
+      Publish = <<3:4, 0:1, 1:2, 0:1, %
+      13, 0,
+      6, 84, 111, 112, 105, 99, 65, 113, 111, 115, 32, 48>>,
       error_logger:info_msg("Client2: Publishing message"),
       gen_tcp:send(Client2, Publish),
 

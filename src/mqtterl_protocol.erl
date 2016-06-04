@@ -43,8 +43,11 @@ tcp_on_packet(State, NewPacket, Send) ->
                <<Bytes/binary, NewPacket/binary>>
            end,
   {Type, Message, RemainingBytes} = mqtterl_codec:decode_packet(Packet),
-  EncodeAndSend = fun(ResponseType, Msg) ->
-    Encoded = mqtterl_codec:encode_packet(ResponseType, Msg),
+  error_logger:info_msg("mqtt::packet decoded ~p: ~p", [Type, Message]),
+
+  EncodeAndSend = fun(ResponseType, ResponseMessage) ->
+    Encoded = mqtterl_codec:encode_packet(ResponseType, ResponseMessage),
+    error_logger:info_msg("mqtt::packet to send ~p: ~p", [ResponseType, ResponseMessage]),
     Send(Encoded)
   end,
 

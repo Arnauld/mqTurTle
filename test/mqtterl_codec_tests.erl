@@ -152,9 +152,21 @@ should_encode_suback__test() ->
   ?SUBACK_FAILURE:8>>, mqtterl_codec:encode_suback(Suback)).
 
 
-should_parse_publish_packet__test() ->
+should_parse_publish_packet_qos0__test() ->
   %% `Publishes(DUP=False, QoS=0, Retain=False, TopicName='TopicA', Payload=b'qos 0')`
   Packet = <<48, 13, 0, 6, 84, 111, 112, 105, 99, 65, 113, 111, 115, 32, 48>>,
+
+  {Type, Message, Remaining} = mqtterl_codec:decode_packet(Packet),
+  ?assertEqual(?PUBLISH, Type),
+  ok.
+
+should_parse_publish_packet_qos1__test() ->
+  %% `Publishes(DUP=False, QoS=0, Retain=False, TopicName='TopicA', Payload=b'qos 0')`
+  Packet = <<3:4, 0:1, 1:2, 0:1, %
+  15, % remaining length
+  0, % QoS
+  6, 84, 111, 112, 105, 99, 65, %
+  113, 111, 115, 32, 48>>,
 
   {Type, Message, Remaining} = mqtterl_codec:decode_packet(Packet),
   ?assertEqual(?PUBLISH, Type),
